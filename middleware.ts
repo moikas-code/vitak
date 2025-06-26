@@ -14,6 +14,9 @@ const isPublicRoute = createRouteMatcher([
   "/api/stripe(.*)",
   "/privacy",
   "/terms",
+  "/vitamin-k-foods-warfarin",
+  "/warfarin-diet-tracker",
+  "/inr-vitamin-k-management",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

@@ -46,6 +46,7 @@
     "react-hook-form": "^7.58.1",
     "stripe": "^18.2.1",
     "superjson": "^2.2.2",
+    "svix": "^1.46.0",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^3.25.67",

@@ -1,9 +1,58 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure } from "../trpc";
+import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
 import { supabaseAdmin } from "@/lib/db/supabase";
 
 export const userRouter = createTRPCRouter({
+  getCurrentUser: protectedProcedure.query(async ({ ctx }) => {
+    const { data, error } = await supabaseAdmin
+      .from("users")
+      .select("*")
+      .eq("clerk_user_id", ctx.session.userId)
+      .single();
+
+    if (error && error.code !== "PGRST116") {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to fetch user",
+      });
+    }
+
+    return data;
+  }),
+
+  ensureUserExists: protectedProcedure
+    .input(
+      z.object({
+        clerk_user_id: z.string(),
+        email: z.string().email().nullable(),
+        username: z.string().nullable(),
+        first_name: z.string().nullable(),
+        last_name: z.string().nullable(),
+        image_url: z.string().url().nullable(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      // Use the database function to get or create user
+      const { data, error } = await supabaseAdmin.rpc("get_or_create_user", {
+        p_clerk_user_id: input.clerk_user_id,
+        p_email: input.email,
+        p_username: input.username,
+        p_first_name: input.first_name,
+        p_last_name: input.last_name,
+        p_image_url: input.image_url,
+      });
+
+      if (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to ensure user exists",
+        });
+      }
+
+      return data;
+    }),
+
   getSettings: protectedProcedure.query(async ({ ctx }) => {
     const { data, error } = await supabaseAdmin
       .from("user_settings")

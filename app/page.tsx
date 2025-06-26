@@ -97,6 +97,47 @@ export default function HomePage() {
           </Card>
         </section>
 
+        <section className="mb-16">
+          <h3 className="text-3xl font-bold text-center mb-8">
+            Helpful Resources
+          </h3>
+          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            <Card>
+              <CardHeader>
+                <CardTitle>Vitamin K Foods Guide</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription className="mb-4">
+                  Comprehensive list of foods and their vitamin K content. Learn which foods 
+                  to limit, moderate, and enjoy freely while on warfarin.
+                </CardDescription>
+                <Link href="/vitamin-k-foods-warfarin">
+                  <Button variant="outline" className="w-full">
+                    View Food Guide →
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Diet Tracker Guide</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription className="mb-4">
+                  Learn how VitaK Tracker helps you manage your warfarin diet with our 
+                  credit system, food database, and tracking features.
+                </CardDescription>
+                <Link href="/warfarin-diet-tracker">
+                  <Button variant="outline" className="w-full">
+                    Learn More →
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+
         <section className="bg-gray-100 rounded-lg p-8 text-center">
           <h3 className="text-3xl font-bold mb-4">
             Designed for Warfarin Patients
