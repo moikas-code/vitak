@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
-import { meal_log_schema } from "@/lib/types";
 import { supabaseAdmin } from "@/lib/db/supabase";
 import { TRPCError } from "@trpc/server";
 

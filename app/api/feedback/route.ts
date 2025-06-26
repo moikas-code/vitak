@@ -3,39 +3,51 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { Redis } from "@upstash/redis";
 import { check_rate_limit } from "@/lib/helpers/rate-limit";
 
-const redis = new Redis({
-  url: process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+// Only initialize Redis if environment variables are provided
+let redis: Redis | null = null;
+
+const redisUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+const redisToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+
+if (redisUrl && redisToken) {
+  redis = new Redis({
+    url: redisUrl,
+    token: redisToken,
+  });
+}
 
 export async function POST(req: NextRequest) {
   try {
     // Authenticate user
     const { userId } = await auth();
-    let rate;
     
-    if (userId) {
-      // Authenticated user: rate limit by userId
-      rate = await check_rate_limit(redis, userId, 10, 60); // 10 feedbacks per minute
-    } else {
-      // Fallback to IP-based limiting
-      const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || 
-                 req.headers.get("x-real-ip") || 
-                 "unknown";
-      rate = await check_rate_limit(redis, `ip_${ip}`, 5, 60); // 5 per minute for anonymous
-    }
-    
-    if (!rate.allowed) {
-      return NextResponse.json(
-        { error: "Rate limit exceeded. Try again soon." },
-        {
-          status: 429,
-          headers: {
-            "X-RateLimit-Remaining": rate.remaining.toString(),
-            "X-RateLimit-Reset": rate.reset.toString(),
-          },
-        }
-      );
+    // Only apply rate limiting if Redis is configured
+    if (redis) {
+      let rate;
+      
+      if (userId) {
+        // Authenticated user: rate limit by userId
+        rate = await check_rate_limit(redis, userId, 10, 60); // 10 feedbacks per minute
+      } else {
+        // Fallback to IP-based limiting
+        const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || 
+                   req.headers.get("x-real-ip") || 
+                   "unknown";
+        rate = await check_rate_limit(redis, `ip_${ip}`, 5, 60); // 5 per minute for anonymous
+      }
+      
+      if (!rate.allowed) {
+        return NextResponse.json(
+          { error: "Rate limit exceeded. Try again soon." },
+          {
+            status: 429,
+            headers: {
+              "X-RateLimit-Remaining": rate.remaining.toString(),
+              "X-RateLimit-Reset": rate.reset.toString(),
+            },
+          }
+        );
+      }
     }
     
     if (!userId) {

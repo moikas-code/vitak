@@ -11,6 +11,7 @@ import { api } from "@/lib/trpc/provider";
 import { useToast } from "@/lib/hooks/use-toast";
 import { Search, Plus } from "lucide-react";
 import type { Food } from "@/lib/types";
+import { track_meal_event, track_search_event } from "@/lib/analytics";
 
 const add_meal_schema = z.object({
   food_id: z.string().min(1, "Please select a food"),
@@ -32,6 +33,10 @@ export function QuickAdd() {
   const utils = api.useUtils();
   const addMeal = api.mealLog.add.useMutation({
     onSuccess: () => {
+      track_meal_event('saved', {
+        food_category: selectedFood?.category,
+        vitamin_k_amount: selectedFood && selectedFood.vitamin_k_mcg_per_100g > 50 ? 'high' : selectedFood && selectedFood.vitamin_k_mcg_per_100g > 20 ? 'medium' : 'low'
+      });
       toast({
         title: "Meal logged",
         description: "Your meal has been added successfully.",
@@ -66,6 +71,10 @@ export function QuickAdd() {
   };
 
   const selectFood = (food: Food) => {
+    track_meal_event('food_selected', {
+      food_category: food.category,
+      vitamin_k_amount: food.vitamin_k_mcg_per_100g > 50 ? 'high' : food.vitamin_k_mcg_per_100g > 20 ? 'medium' : 'low'
+    });
     setSelectedFood(food);
     setValue("food_id", food.id);
     setValue("portion_size_g", food.common_portion_size_g);
@@ -82,7 +91,15 @@ export function QuickAdd() {
             type="text"
             placeholder="Type to search..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              setSearch(value);
+              if (value.length > 2) {
+                track_search_event('food_search', {
+                  query_length: value.length
+                });
+              }
+            }}
             className="pl-10"
           />
         </div>

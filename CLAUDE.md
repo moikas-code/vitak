@@ -19,6 +19,7 @@ bun start           # Start production server
 
 # Database Migrations
 bunx supabase migration new <name>  # Create new migration file
+bun push:migration   # Push migration to local DB
 ```
 
 ## Architecture Overview

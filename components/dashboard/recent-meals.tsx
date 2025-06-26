@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/lib/trpc/provider";
 import { useToast } from "@/lib/hooks/use-toast";
 import { Trash2 } from "lucide-react";
-import type { MealLog } from "@/lib/types";
+import type { MealLogWithFood } from "@/lib/types";
 
 interface RecentMealsProps {
-  meals: MealLog[];
+  meals: MealLogWithFood[];
 }
 
 export function RecentMeals({ meals }: RecentMealsProps) {

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { MessageSquare } from "lucide-react";
 import { FeedbackModal } from "./feedback-modal";
 import { cn } from "@/lib/utils/cn";
+import { track_feature_event } from "@/lib/analytics";
 
 interface FeedbackButtonProps {
   variant?: "default" | "ghost" | "outline" | "secondary";
@@ -26,7 +27,10 @@ export function FeedbackButton({
       <Button
         variant={variant}
         size={size}
-        onClick={() => setIsModalOpen(true)}
+        onClick={() => {
+          track_feature_event('feedback');
+          setIsModalOpen(true);
+        }}
         className={cn("gap-2", className)}
       >
         <MessageSquare className="h-4 w-4" />

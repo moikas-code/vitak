@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { vitamin_k_period_schema } from "@/lib/types";
 import { supabaseAdmin } from "@/lib/db/supabase";
@@ -104,7 +103,14 @@ export const creditRouter = createTRPCRouter({
     }
 
     const periods: Array<"daily" | "weekly" | "monthly"> = ["daily", "weekly", "monthly"];
-    const balances: Record<string, any> = {};
+    const balances: Record<string, {
+      user_id: string;
+      period: "daily" | "weekly" | "monthly";
+      credits_used: number;
+      credits_limit: number;
+      period_start: Date;
+      period_end: Date;
+    }> = {};
 
     for (const period of periods) {
       const { period_start, period_end } = get_period_dates(period);

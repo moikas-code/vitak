@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +24,6 @@ interface DonateModalProps {
 const PRESET_AMOUNTS = [5, 10, 25, 50];
 
 export function DonateModal({ isOpen, onClose }: DonateModalProps) {
-  const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedAmount, setSelectedAmount] = useState<number | null>(10);

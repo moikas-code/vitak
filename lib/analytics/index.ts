@@ -29,6 +29,7 @@ interface EventProperties {
   anonymous_id?: string;
   feature?: string;
   action?: string;
+  [key: string]: string | number;
 }
 
 /**
@@ -125,11 +126,11 @@ export function track_search_event(type: 'food_search' | 'filter_applied', data?
 /**
  * Sanitize properties to ensure no PII is tracked
  */
-function sanitize_properties(properties?: EventProperties): EventProperties | undefined {
+function sanitize_properties(properties?: EventProperties): Record<string, string | number> | undefined {
   if (!properties) return undefined;
 
   // Remove any potentially sensitive data
-  const safe_properties: EventProperties = {};
+  const safe_properties: Record<string, string | number> = {};
 
   // Only allow specific safe properties
   if (properties.category) safe_properties.category = properties.category;

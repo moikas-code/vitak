@@ -8,6 +8,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { track_dashboard_event } from "@/lib/analytics";
+import type { MealLogWithFood } from "@/lib/types";
 
 export default function HistoryPage() {
   const [dateRange, setDateRange] = useState(() => {
@@ -31,7 +32,7 @@ export default function HistoryPage() {
     }
     acc[date].push(log);
     return acc;
-  }, {} as Record<string, typeof mealLogs>);
+  }, {} as Record<string, MealLogWithFood[]>);
 
   return (
     <div className="space-y-6">
@@ -151,11 +152,11 @@ export default function HistoryPage() {
         <CardContent>
           {groupedByDate && Object.keys(groupedByDate).length > 0 ? (
             <div className="space-y-4">
-              {Object.entries(groupedByDate)
+              {(Object.entries(groupedByDate) as [string, MealLogWithFood[]][])
                 .sort(([a], [b]) => b.localeCompare(a))
                 .map(([date, logs]) => {
                   const dayTotal = logs.reduce(
-                    (sum, log) => sum + log.vitamin_k_consumed_mcg,
+                    (sum: number, log: MealLogWithFood) => sum + log.vitamin_k_consumed_mcg,
                     0
                   );
                   return (
@@ -169,7 +170,7 @@ export default function HistoryPage() {
                         </span>
                       </div>
                       <div className="space-y-2">
-                        {logs.map((log) => (
+                        {logs.map((log: MealLogWithFood) => (
                           <div
                             key={log.id}
                             className="flex justify-between text-sm text-muted-foreground"

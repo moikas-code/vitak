@@ -50,6 +50,11 @@ export const meal_log_schema = z.object({
 });
 export type MealLog = z.infer<typeof meal_log_schema>;
 
+// Type for meal logs with joined food data (used in queries with joins)
+export type MealLogWithFood = MealLog & {
+  food: Food | null;
+};
+
 export const credit_balance_schema = z.object({
   user_id: z.string(),
   period: vitamin_k_period_schema,

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -14,6 +15,7 @@ import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 import { DonateButton } from "@/components/donate/donate-button";
+import { track_dashboard_event, track_settings_event } from "@/lib/analytics";
 
 const settings_schema = z.object({
   daily_limit: z.number().positive("Daily limit must be positive"),
@@ -29,8 +31,13 @@ export default function SettingsPage() {
   const { data: settings, isLoading } = api.user.getSettings.useQuery();
   const utils = api.useUtils();
 
+  useEffect(() => {
+    track_dashboard_event('settings');
+  }, []);
+
   const updateSettings = api.user.updateSettings.useMutation({
     onSuccess: () => {
+      track_settings_event('credit_limit');
       toast({
         title: "Settings updated",
         description: "Your Vitamin K limits have been saved.",
@@ -51,7 +58,6 @@ export default function SettingsPage() {
     register,
     handleSubmit,
     setValue,
-    watch,
     formState: { errors },
   } = useForm<SettingsForm>({
     resolver: zodResolver(settings_schema),

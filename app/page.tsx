@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Footer } from "@/components/ui/footer";
 import { Activity, Apple, Shield, TrendingUp } from "lucide-react";
 
 export default function HomePage() {
@@ -10,10 +11,10 @@ export default function HomePage() {
         <nav className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">VitaK Tracker</h1>
           <div className="flex gap-4">
-            <Link href="/auth/sign-in/[[...sign-in]]">
+            <Link href="/auth/sign-in">
               <Button variant="ghost">Sign In</Button>
             </Link>
-            <Link href="/auth/sign-up/[[...sign-up]]">
+            <Link href="/auth/sign-up">
               <Button>Get Started</Button>
             </Link>
           </div>
@@ -29,7 +30,7 @@ export default function HomePage() {
             VitaK Tracker helps warfarin patients maintain consistent Vitamin K intake
             through our innovative credit-based tracking system.
           </p>
-          <Link href="/auth/sign-up/[[...sign-up]]">
+          <Link href="/auth/sign-up">
             <Button size="lg" className="text-lg px-8">
               Start Tracking Today
             </Button>
@@ -98,13 +99,15 @@ export default function HomePage() {
             Built with input from healthcare professionals and patients, VitaK
             Tracker makes managing your Vitamin K intake simple and stress-free.
           </p>
-          <Link href="/auth/sign-up/[[...sign-up]]">
+          <Link href="/auth/sign-up">
             <Button size="lg" variant="secondary">
               Create Your Account
             </Button>
           </Link>
         </section>
       </main>
+
+      <Footer />
     </div>
   );
 }

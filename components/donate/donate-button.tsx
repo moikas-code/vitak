@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Heart } from "lucide-react";
 import { DonateModal } from "./donate-modal";
 import { cn } from "@/lib/utils/cn";
+import { track_feature_event } from "@/lib/analytics";
 
 interface DonateButtonProps {
   variant?: "default" | "ghost" | "outline" | "secondary";
@@ -26,7 +27,10 @@ export function DonateButton({
       <Button
         variant={variant}
         size={size}
-        onClick={() => setIsModalOpen(true)}
+        onClick={() => {
+          track_feature_event('donate');
+          setIsModalOpen(true);
+        }}
         className={cn("gap-2", className)}
       >
         <Heart className="h-4 w-4" />
