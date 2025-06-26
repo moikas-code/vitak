@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { CreditDisplay } from "@/components/dashboard/credit-display";
 import { RecentMeals } from "@/components/dashboard/recent-meals";
 import { QuickAdd } from "@/components/dashboard/quick-add";
+import { MealPresets } from "@/components/dashboard/meal-presets";
 import { api } from "@/lib/trpc/provider";
 import { track_dashboard_event } from "@/lib/analytics";
 
@@ -49,6 +50,18 @@ export default function DashboardPage() {
           </>
         )}
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>My Meal Presets</CardTitle>
+          <CardDescription>
+            Your saved meal combinations for quick logging
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <MealPresets />
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

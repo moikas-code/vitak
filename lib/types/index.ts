@@ -64,3 +64,21 @@ export const credit_balance_schema = z.object({
   period_end: z.date(),
 });
 export type CreditBalance = z.infer<typeof credit_balance_schema>;
+
+export const meal_preset_schema = z.object({
+  id: z.string(),
+  user_id: z.string(),
+  name: z.string().max(50),
+  food_id: z.string(),
+  portion_size_g: z.number().positive(),
+  vitamin_k_mcg: z.number().nonnegative(),
+  usage_count: z.number().int().nonnegative(),
+  created_at: z.date(),
+  updated_at: z.date(),
+});
+export type MealPreset = z.infer<typeof meal_preset_schema>;
+
+// Type for meal presets with joined food data
+export type MealPresetWithFood = MealPreset & {
+  food: Food | null;
+};

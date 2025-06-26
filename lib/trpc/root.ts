@@ -2,6 +2,7 @@ import { userRouter } from "./routers/user";
 import { foodRouter } from "./routers/food";
 import { mealLogRouter } from "./routers/meal-log";
 import { creditRouter } from "./routers/credit";
+import { mealPresetRouter } from "./routers/meal-preset";
 import { createCallerFactory, createTRPCRouter } from "./trpc";
 
 export const appRouter = createTRPCRouter({
@@ -9,6 +10,7 @@ export const appRouter = createTRPCRouter({
   food: foodRouter,
   mealLog: mealLogRouter,
   credit: creditRouter,
+  mealPreset: mealPresetRouter,
 });
 
 export type AppRouter = typeof appRouter;

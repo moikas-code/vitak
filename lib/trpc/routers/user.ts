@@ -33,7 +33,15 @@ export const userRouter = createTRPCRouter({
         image_url: z.string().url().nullable(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      // Security check: ensure the clerk_user_id matches the authenticated user
+      if (input.clerk_user_id !== ctx.session.userId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Cannot create or update user record for a different user",
+        });
+      }
+
       // Use the database function to get or create user
       const supabase = await createServerSupabaseClient();
       const { data, error } = await supabase.rpc("get_or_create_user", {

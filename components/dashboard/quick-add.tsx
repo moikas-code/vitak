@@ -12,6 +12,7 @@ import { useToast } from "@/lib/hooks/use-toast";
 import { Search, Plus } from "lucide-react";
 import type { Food } from "@/lib/types";
 import { track_meal_event, track_search_event } from "@/lib/analytics";
+import { SaveAsPresetButton } from "./save-as-preset-button";
 
 const add_meal_schema = z.object({
   food_id: z.string().min(1, "Please select a food"),
@@ -61,6 +62,7 @@ export function QuickAdd() {
     handleSubmit,
     reset,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<AddMealForm>({
     resolver: zodResolver(add_meal_schema),
@@ -154,11 +156,19 @@ export function QuickAdd() {
             </p>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button type="submit" disabled={addMeal.isPending}>
               <Plus className="mr-2 h-4 w-4" />
               Add Meal
             </Button>
+            <SaveAsPresetButton
+              food={selectedFood}
+              portion_size_g={watch("portion_size_g") || selectedFood.common_portion_size_g}
+              onSuccess={() => {
+                setSelectedFood(null);
+                reset();
+              }}
+            />
             <Button
               type="button"
               variant="outline"
