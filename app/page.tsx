@@ -38,7 +38,7 @@ export default function HomePage() {
           </h2>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
             VitaK Tracker helps warfarin patients maintain consistent Vitamin K intake
-            through our innovative credit-based tracking system.
+            through our research-based credit system and comprehensive USDA nutritional database.
           </p>
           <Link href="/auth/sign-up">
             <Button size="lg" className="text-lg px-8">
@@ -200,8 +200,9 @@ export default function HomePage() {
             Designed for Warfarin Patients
           </h3>
           <p className="text-lg text-gray-600 mb-6 max-w-2xl mx-auto">
-            Built with input from healthcare professionals and patients, VitaK
-            Tracker makes managing your Vitamin K intake simple and stress-free.
+            Built through comprehensive research and powered by USDA nutritional data, VitaK
+            Tracker makes managing your Vitamin K intake simple and stress-free. Always consult
+            your healthcare provider for personalized dietary guidance.
           </p>
           <Link href="/auth/sign-up">
             <Button size="lg" variant="secondary">
