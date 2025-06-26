@@ -1,7 +1,6 @@
 import { Metadata } from "next";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { Footer } from "@/components/ui/footer";
+import { PublicHeader } from "@/components/ui/public-header";
 import { BreadcrumbLD } from "@/components/seo/json-ld";
 import { VitaminKCalculatorClient } from "@/components/vitamin-k-calculator-client";
 import { createServerSupabaseClient } from "@/lib/db/supabase-server";
@@ -75,21 +74,8 @@ export default async function VitaminKCalculatorPage() {
       ]} />
       
       <div className="min-h-screen bg-gray-50">
-        <header className="bg-white border-b">
-          <div className="container mx-auto px-4 py-6">
-            <nav className="flex items-center justify-between">
-              <Link href="/" className="text-2xl font-bold text-gray-900">
-                VitaK Tracker
-              </Link>
-              <Link href="/auth/sign-up">
-                <Button>Start Tracking</Button>
-              </Link>
-            </nav>
-          </div>
-        </header>
-
+        <PublicHeader />
         <VitaminKCalculatorClient commonFoods={commonFoods} />
-
         <Footer />
       </div>
 

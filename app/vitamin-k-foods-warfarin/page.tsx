@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Footer } from "@/components/ui/footer";
+import { PublicHeader } from "@/components/ui/public-header";
 import { AlertCircle, Apple, Carrot, Leaf, Search } from "lucide-react";
 import { BreadcrumbLD } from "@/components/seo/json-ld";
 
@@ -29,18 +30,7 @@ export default function VitaminKFoodsPage() {
       ]} />
       
       <div className="min-h-screen bg-gray-50">
-        <header className="bg-white border-b">
-          <div className="container mx-auto px-4 py-6">
-            <nav className="flex items-center justify-between">
-              <Link href="/" className="text-2xl font-bold text-gray-900">
-                VitaK Tracker
-              </Link>
-              <Link href="/auth/sign-up">
-                <Button>Start Tracking</Button>
-              </Link>
-            </nav>
-          </div>
-        </header>
+        <PublicHeader />
 
         <main className="container mx-auto px-4 py-8">
           <article className="max-w-4xl mx-auto">

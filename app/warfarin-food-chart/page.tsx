@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Footer } from "@/components/ui/footer";
+import { PublicHeader } from "@/components/ui/public-header";
 import { PrintButton } from "@/components/ui/print-button";
 import { AlertCircle } from "lucide-react";
 import { BreadcrumbLD } from "@/components/seo/json-ld";
@@ -10,14 +11,14 @@ import { createClient } from "@supabase/supabase-js";
 
 export const metadata: Metadata = {
   title: "Warfarin Food Chart - Printable Vitamin K Food List",
-  description: "Free printable warfarin food chart showing vitamin K content in common foods. Download or print this comprehensive guide for easy reference while grocery shopping or meal planning.",
+  description: "Free printable warfarin food chart based on USDA research data showing vitamin K content in common foods. Educational reference guide for meal planning and grocery shopping.",
   keywords: ["warfarin food chart", "vitamin k food list pdf", "printable warfarin diet", "coumadin food chart", "blood thinner food list"],
   alternates: {
     canonical: "/warfarin-food-chart",
   },
   openGraph: {
     title: "Printable Warfarin Food Chart - Vitamin K Content Guide",
-    description: "Download or print our comprehensive vitamin K food chart for warfarin patients",
+    description: "Download or print our research-based vitamin K food chart with USDA data for educational reference",
     type: "article",
   },
 };
@@ -196,20 +197,9 @@ export default async function WarfarinFoodChartPage() {
       ]} />
       
       <div className="min-h-screen bg-gray-50 print:bg-white">
-        <header className="bg-white border-b print:hidden">
-          <div className="container mx-auto px-4 py-6">
-            <nav className="flex items-center justify-between">
-              <Link href="/" className="text-2xl font-bold text-gray-900">
-                VitaK Tracker
-              </Link>
-              <div className="flex gap-2">
-                <Link href="/auth/sign-up">
-                  <Button>Start Tracking</Button>
-                </Link>
-              </div>
-            </nav>
-          </div>
-        </header>
+        <div className="print:hidden">
+          <PublicHeader />
+        </div>
 
         <main className="container mx-auto px-4 py-8 print:py-4">
           <div className="max-w-4xl mx-auto">
@@ -236,8 +226,9 @@ export default async function WarfarinFoodChartPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm print:text-xs">
-                  This chart is for general reference only. Vitamin K content can vary based on 
-                  preparation methods and serving sizes. Always consult with your healthcare 
+                  This chart is for educational reference only and is based on research data from USDA sources. 
+                  Vitamin K content can vary based on preparation methods and serving sizes. This information 
+                  has not been reviewed by healthcare professionals. Always consult with your healthcare 
                   provider about your specific dietary requirements while taking warfarin.
                 </p>
               </CardContent>

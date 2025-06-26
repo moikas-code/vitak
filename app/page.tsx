@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Footer } from "@/components/ui/footer";
+import { MobileNav } from "@/components/ui/mobile-nav";
 import { Activity, Apple, Shield, TrendingUp, Download, Calculator, FileText } from "lucide-react";
 import { WebApplicationLD, MedicalWebPageLD, OrganizationLD, FAQLD } from "@/components/seo/json-ld";
 
@@ -19,10 +20,13 @@ export default function HomePage() {
         <header className="container mx-auto px-4 py-6">
         <nav className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">VitaK Tracker</h1>
-          <div className="flex gap-4">
-            <Link href="/auth/sign-up">
-              <Button>Get Started</Button>
-            </Link>
+          <div className="flex items-center gap-4">
+            <div className="hidden md:block">
+              <Link href="/auth/sign-up">
+                <Button>Get Started</Button>
+              </Link>
+            </div>
+            <MobileNav />
           </div>
         </nav>
       </header>
