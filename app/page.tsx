@@ -3,11 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Footer } from "@/components/ui/footer";
 import { Activity, Apple, Shield, TrendingUp } from "lucide-react";
+import { WebApplicationLD, MedicalWebPageLD, OrganizationLD, FAQLD } from "@/components/seo/json-ld";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      <header className="container mx-auto px-4 py-6">
+    <>
+      <WebApplicationLD />
+      <MedicalWebPageLD />
+      <OrganizationLD />
+      <FAQLD />
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+        <header className="container mx-auto px-4 py-6">
         <nav className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">VitaK Tracker</h1>
           <div className="flex gap-4">
@@ -107,7 +113,8 @@ export default function HomePage() {
         </section>
       </main>
 
-      <Footer />
-    </div>
+        <Footer />
+      </div>
+    </>
   );
 }

@@ -4,7 +4,7 @@ export function Footer() {
   return (
     <footer className="bg-white border-t mt-auto">
       <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">VitaK Tracker</h3>
             <p className="text-gray-600 text-sm">
@@ -26,6 +26,27 @@ export function Footer() {
               <li>
                 <Link href="/terms" className="text-gray-600 hover:text-gray-900 transition-colors">
                   Terms of Service
+                </Link>
+              </li>
+            </ul>
+          </div>
+          
+          <div>
+            <h4 className="text-md font-semibold text-gray-900 mb-4">Resources</h4>
+            <ul className="space-y-2 text-sm">
+              <li>
+                <Link href="/vitamin-k-foods-warfarin" className="text-gray-600 hover:text-gray-900 transition-colors">
+                  Vitamin K Foods Guide
+                </Link>
+              </li>
+              <li>
+                <Link href="/warfarin-diet-tracker" className="text-gray-600 hover:text-gray-900 transition-colors">
+                  Diet Tracker Guide
+                </Link>
+              </li>
+              <li>
+                <Link href="/inr-vitamin-k-management" className="text-gray-600 hover:text-gray-900 transition-colors">
+                  INR Management Tips
                 </Link>
               </li>
             </ul>

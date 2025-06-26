@@ -1,0 +1,36 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="white"/>
+  <rect width="1200" height="630" fill="url(#gradient)"/>
+  
+  <!-- Logo/Icon -->
+  <circle cx="600" cy="180" r="60" fill="white" fill-opacity="0.1"/>
+  <path d="M600 140 L620 160 L610 180 L600 170 L590 180 L580 160 Z" fill="white" stroke="white" stroke-width="2"/>
+  
+  <!-- Title -->
+  <text x="600" y="300" font-family="Arial, sans-serif" font-size="72" font-weight="bold" fill="white" text-anchor="middle">
+    VitaK Tracker
+  </text>
+  
+  <!-- Subtitle -->
+  <text x="600" y="360" font-family="Arial, sans-serif" font-size="32" fill="white" fill-opacity="0.9" text-anchor="middle">
+    Vitamin K Management for Warfarin Patients
+  </text>
+  
+  <!-- Features -->
+  <text x="600" y="440" font-family="Arial, sans-serif" font-size="24" fill="white" fill-opacity="0.8" text-anchor="middle">
+    ✓ Track Daily Credits  ✓ Food Database  ✓ INR Stability
+  </text>
+  
+  <!-- CTA -->
+  <rect x="475" y="490" width="250" height="60" rx="30" fill="white" fill-opacity="0.2" stroke="white" stroke-width="2"/>
+  <text x="600" y="530" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="white" text-anchor="middle">
+    Start Free Today
+  </text>
+  
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#059669;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#10b981;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+</svg>
