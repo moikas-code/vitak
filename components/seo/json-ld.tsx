@@ -84,7 +84,7 @@ export function OrganizationLD() {
     "description": "Free vitamin K tracking app for warfarin patients",
     "email": "support@vitaktracker.com",
     "sameAs": [
-      "https://twitter.com/vitaktracker",
+      "https://twitter.com/moikas_official",
       "https://github.com/vitaktracker"
     ]
   };

@@ -172,7 +172,7 @@ export default function FAQPage() {
                 <ul className="space-y-2 text-sm">
                   <li>• Email: support@vitaktracker.com</li>
                   <li>• Visit our <Link href="/blog" className="text-primary hover:underline">blog</Link> for detailed guides</li>
-                  <li>• Check for updates on our <a href="https://twitter.com/vitaktracker" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Twitter</a></li>
+                  <li>• Check for updates on our <a href="https://twitter.com/moikas_official" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Twitter</a></li>
                 </ul>
               </CardContent>
             </Card>

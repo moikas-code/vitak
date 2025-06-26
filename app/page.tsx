@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Footer } from "@/components/ui/footer";
-import { Activity, Apple, Shield, TrendingUp, Download } from "lucide-react";
+import { Activity, Apple, Shield, TrendingUp, Download, Calculator, FileText } from "lucide-react";
 import { WebApplicationLD, MedicalWebPageLD, OrganizationLD, FAQLD } from "@/components/seo/json-ld";
 
 export const dynamic = 'force-static';
@@ -20,9 +20,6 @@ export default function HomePage() {
         <nav className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">VitaK Tracker</h1>
           <div className="flex gap-4">
-            <Link href="/auth/sign-in">
-              <Button variant="ghost">Sign In</Button>
-            </Link>
             <Link href="/auth/sign-up">
               <Button>Get Started</Button>
             </Link>
@@ -102,9 +99,45 @@ export default function HomePage() {
 
         <section className="mb-16">
           <h3 className="text-3xl font-bold text-center mb-8">
-            Helpful Resources
+            Free Tools & Resources
           </h3>
-          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+              <CardHeader>
+                <Calculator className="h-8 w-8 text-blue-600 mb-2" />
+                <CardTitle className="text-blue-900">Vitamin K Calculator</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription className="mb-4 text-blue-700">
+                  Calculate total vitamin K content in your meals. Perfect for planning 
+                  meals and staying within your daily limits.
+                </CardDescription>
+                <Link href="/vitamin-k-calculator">
+                  <Button variant="outline" className="w-full border-blue-300 text-blue-700 hover:bg-blue-50">
+                    Try Calculator →
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+              <CardHeader>
+                <FileText className="h-8 w-8 text-green-600 mb-2" />
+                <CardTitle className="text-green-900">Printable Food Chart</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription className="mb-4 text-green-700">
+                  Download and print our comprehensive vitamin K food chart. Perfect 
+                  for grocery shopping and meal planning.
+                </CardDescription>
+                <Link href="/warfarin-food-chart">
+                  <Button variant="outline" className="w-full border-green-300 text-green-700 hover:bg-green-50">
+                    Get Chart →
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+            
             <Card>
               <CardHeader>
                 <CardTitle>Vitamin K Foods Guide</CardTitle>

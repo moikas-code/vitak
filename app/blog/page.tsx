@@ -159,7 +159,7 @@ export default async function BlogPage() {
                     RSS Feed
                   </a>
                   <a 
-                    href="https://twitter.com/vitaktracker" 
+                    href="https://twitter.com/moikas_official" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="text-primary hover:text-primary/80 text-sm font-medium"
