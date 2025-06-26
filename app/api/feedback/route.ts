@@ -16,13 +16,38 @@ if (redisUrl && redisToken) {
   });
 }
 
+// Simple in-memory rate limiting for development (when Redis is not available)
+const inMemoryRateLimit = new Map<string, { count: number; resetTime: number }>();
+
+function checkInMemoryRateLimit(identifier: string, limit: number = 10, windowSeconds: number = 60): boolean {
+  const now = Date.now();
+  const key = identifier;
+  const entry = inMemoryRateLimit.get(key);
+  
+  if (!entry || now > entry.resetTime) {
+    // First request or window expired
+    inMemoryRateLimit.set(key, { count: 1, resetTime: now + (windowSeconds * 1000) });
+    return true;
+  }
+  
+  if (entry.count >= limit) {
+    return false; // Rate limit exceeded
+  }
+  
+  entry.count++;
+  return true;
+}
+
 export async function POST(req: NextRequest) {
   try {
     // Authenticate user
     const { userId } = await auth();
     
-    // Only apply rate limiting if Redis is configured
+    // Apply rate limiting
+    let rateLimitPassed = true;
+    
     if (redis) {
+      // Use Redis-based rate limiting in production
       let rate;
       
       if (userId) {
@@ -36,7 +61,9 @@ export async function POST(req: NextRequest) {
         rate = await check_rate_limit(redis, `ip_${ip}`, 5, 60); // 5 per minute for anonymous
       }
       
-      if (!rate.allowed) {
+      rateLimitPassed = rate.allowed;
+      
+      if (!rateLimitPassed) {
         return NextResponse.json(
           { error: "Rate limit exceeded. Try again soon." },
           {
@@ -46,6 +73,19 @@ export async function POST(req: NextRequest) {
               "X-RateLimit-Reset": rate.reset.toString(),
             },
           }
+        );
+      }
+    } else {
+      // Use in-memory rate limiting for development
+      const identifier = userId || `ip_${req.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"}`;
+      const limit = userId ? 10 : 5; // 10 for authenticated, 5 for anonymous
+      
+      rateLimitPassed = checkInMemoryRateLimit(identifier, limit, 60);
+      
+      if (!rateLimitPassed) {
+        return NextResponse.json(
+          { error: "Rate limit exceeded. Try again soon." },
+          { status: 429 }
         );
       }
     }

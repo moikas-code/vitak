@@ -29,7 +29,6 @@ interface EventProperties {
   anonymous_id?: string;
   feature?: string;
   action?: string;
-  [key: string]: string | number;
 }
 
 /**
