@@ -127,6 +127,24 @@ const withPWA = require('next-pwa')({
         }
       }
     },
+    // Handle tRPC API routes
+    {
+      urlPattern: ({ url }) => {
+        return url.pathname.startsWith('/api/trpc/');
+      },
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'trpc-api',
+        expiration: {
+          maxEntries: 50,
+          maxAgeSeconds: 5 * 60 // 5 minutes
+        },
+        networkTimeoutSeconds: 10,
+        cacheableResponse: {
+          statuses: [0, 200]
+        }
+      }
+    },
     {
       urlPattern: ({ url }) => {
         const isSameOrigin = self.origin === url.origin

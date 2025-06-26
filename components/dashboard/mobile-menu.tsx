@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Activity, Home, Settings, UtensilsCrossed, Calculator, FileText } from "lucide-react";
+import { Menu, Activity, Home, Settings, UtensilsCrossed, Calculator, FileText, Wifi, WifiOff } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { DonateButton } from "@/components/donate/donate-button";
 import { FeedbackButton } from "@/components/feedback/feedback-button";
+import { useConnectionStatus } from "@/lib/offline/hooks";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
@@ -27,6 +28,7 @@ const navigation = [
 export function MobileMenu() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const { is_online, unsynced_count } = useConnectionStatus();
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -65,6 +67,18 @@ export function MobileMenu() {
           })}
           
           <div className="mt-4 pt-4 border-t">
+            {/* Connection status */}
+            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mb-3 px-3 py-2 bg-gray-50 rounded-lg">
+              {is_online ? (
+                <><Wifi className="h-3 w-3" /> Online</>
+              ) : (
+                <><WifiOff className="h-3 w-3" /> Offline</>
+              )}
+              {unsynced_count > 0 && (
+                <span className="text-amber-600">({unsynced_count} pending)</span>
+              )}
+            </div>
+            
             <div className="flex flex-col gap-3">
               <FeedbackButton 
                 className="w-full justify-start" 

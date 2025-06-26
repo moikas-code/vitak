@@ -248,4 +248,81 @@ export class OfflineStorageService {
     const count = await db.count('sync_queue');
     return count;
   }
+  
+  // Sync-related helper methods
+  async updateMealLogWithServerId(local_id: string, server_id: string): Promise<void> {
+    const db = await get_offline_db();
+    const meal_log = await db.get('meal_logs', local_id);
+    
+    if (meal_log) {
+      await db.put('meal_logs', {
+        ...meal_log,
+        id: server_id,
+        is_synced: true,
+        sync_status: 'synced',
+        last_modified: new Date(),
+      });
+      
+      // Remove old entry if ID changed
+      if (local_id !== server_id) {
+        await db.delete('meal_logs', local_id);
+      }
+    }
+  }
+  
+  async updateMealPresetWithServerId(local_id: string, server_id: string): Promise<void> {
+    const db = await get_offline_db();
+    const preset = await db.get('meal_presets', local_id);
+    
+    if (preset) {
+      await db.put('meal_presets', {
+        ...preset,
+        id: server_id,
+        is_synced: true,
+        last_modified: new Date(),
+      });
+      
+      // Remove old entry if ID changed
+      if (local_id !== server_id) {
+        await db.delete('meal_presets', local_id);
+      }
+    }
+  }
+  
+  async updateMealLogFromServer(server_meal_log: MealLog): Promise<void> {
+    const db = await get_offline_db();
+    const encryption_key = get_stored_encryption_key();
+    
+    if (!encryption_key) {
+      throw new Error('No encryption key available');
+    }
+    
+    const encrypted_data = encrypt_data(server_meal_log, encryption_key);
+    
+    await db.put('meal_logs', {
+      ...server_meal_log,
+      is_synced: true,
+      sync_status: 'synced',
+      last_modified: new Date(),
+      encrypted_data,
+    });
+  }
+  
+  async updateUserSettingsFromServer(server_settings: UserSettings): Promise<void> {
+    const db = await get_offline_db();
+    const encryption_key = get_stored_encryption_key();
+    
+    if (!encryption_key) {
+      throw new Error('No encryption key available');
+    }
+    
+    const encrypted_data = encrypt_data(server_settings, encryption_key);
+    
+    await db.put('user_settings', {
+      ...server_settings,
+      is_synced: true,
+      last_modified: new Date(),
+      encrypted_data,
+    });
+  }
 }

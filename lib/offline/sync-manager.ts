@@ -1,5 +1,6 @@
 import { OfflineStorageService } from './storage-service';
 import type { VitaKOfflineDB } from './database';
+import type { MealLog, UserSettings, MealPreset } from '@/lib/types';
 
 export class SyncManager {
   private static instance: SyncManager;
@@ -109,22 +110,219 @@ export class SyncManager {
   }
   
   private async syncMealLog(item: VitaKOfflineDB['sync_queue']['value']) {
-    // In a real implementation, we would make direct fetch calls to the API
-    // For now, we'll just log that sync is needed
-    console.log('Sync needed for meal log:', item);
+    if (!item.data) {
+      throw new Error('No data to sync');
+    }
+    
+    const meal_log = item.data as MealLog;
+    
+    try {
+      // Get auth token
+      const token = await this.getAuthToken();
+      
+      if (item.operation === 'create') {
+        const response = await fetch('/api/trpc/mealLog.add', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'x-trpc-source': 'offline-sync',
+          },
+          body: JSON.stringify({
+            food_id: meal_log.food_id,
+            portion_size_g: meal_log.portion_size_g,
+          }),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        // Update local meal log with server ID
+        await this.storage.updateMealLogWithServerId(meal_log.id, result.id);
+        
+      } else if (item.operation === 'delete') {
+        const response = await fetch('/api/trpc/mealLog.delete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'x-trpc-source': 'offline-sync',
+          },
+          body: JSON.stringify(meal_log.id),
+        });
+        
+        if (!response.ok && response.status !== 404) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        // Remove from local storage
+        await this.storage.deleteMealLog(meal_log.id);
+      }
+      
+    } catch (error) {
+      console.error('Failed to sync meal log:', error);
+      throw error;
+    }
   }
   
   private async syncUserSettings(item: VitaKOfflineDB['sync_queue']['value']) {
-    console.log('Sync needed for user settings:', item);
+    if (!item.data) {
+      throw new Error('No data to sync');
+    }
+    
+    const user_settings = item.data as UserSettings;
+    
+    try {
+      const token = await this.getAuthToken();
+      
+      if (item.operation === 'update') {
+        const response = await fetch('/api/trpc/user.updateSettings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'x-trpc-source': 'offline-sync',
+          },
+          body: JSON.stringify({
+            daily_limit: user_settings.daily_limit,
+            weekly_limit: user_settings.weekly_limit,
+            monthly_limit: user_settings.monthly_limit,
+            tracking_period: user_settings.tracking_period,
+          }),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Failed to sync user settings:', error);
+      throw error;
+    }
   }
   
   private async syncMealPreset(item: VitaKOfflineDB['sync_queue']['value']) {
-    console.log('Sync needed for meal preset:', item);
+    if (!item.data) {
+      throw new Error('No data to sync');
+    }
+    
+    const meal_preset = item.data as MealPreset;
+    
+    try {
+      const token = await this.getAuthToken();
+      
+      if (item.operation === 'create') {
+        const response = await fetch('/api/trpc/mealPreset.add', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'x-trpc-source': 'offline-sync',
+          },
+          body: JSON.stringify({
+            name: meal_preset.name,
+            food_id: meal_preset.food_id,
+            portion_size_g: meal_preset.portion_size_g,
+          }),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        // Update local preset with server ID
+        await this.storage.updateMealPresetWithServerId(meal_preset.id, result.id);
+        
+      } else if (item.operation === 'delete') {
+        const response = await fetch('/api/trpc/mealPreset.delete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'x-trpc-source': 'offline-sync',
+          },
+          body: JSON.stringify(meal_preset.id),
+        });
+        
+        if (!response.ok && response.status !== 404) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Failed to sync meal preset:', error);
+      throw error;
+    }
   }
   
   private async pullServerData() {
-    // In a real implementation, we would make direct fetch calls to pull data
-    console.log('Pull server data needed');
+    try {
+      const token = await this.getAuthToken();
+      
+      // Pull today's meal logs
+      const meal_logs_response = await fetch('/api/trpc/mealLog.getToday', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'x-trpc-source': 'offline-sync',
+        },
+      });
+      
+      if (meal_logs_response.ok) {
+        const meal_logs = await meal_logs_response.json();
+        
+        // Update local storage with server data
+        for (const log of meal_logs) {
+          await this.storage.updateMealLogFromServer(log);
+        }
+      }
+      
+      // Pull user settings
+      const settings_response = await fetch('/api/trpc/user.getSettings', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'x-trpc-source': 'offline-sync',
+        },
+      });
+      
+      if (settings_response.ok) {
+        const settings = await settings_response.json();
+        await this.storage.updateUserSettingsFromServer(settings);
+      }
+      
+    } catch (error) {
+      console.error('Failed to pull server data:', error);
+      // Don't throw - pulling data is not critical
+    }
+  }
+  
+  private async getAuthToken(): Promise<string> {
+    try {
+      if (typeof window !== 'undefined') {
+        // Use dynamic import to avoid SSR issues
+        await import('@clerk/nextjs');
+        
+        // For offline sync, we need to get the token differently
+        // This is a simplified approach - in a real app you might store the token
+        const storedToken = localStorage.getItem('clerk-token');
+        if (storedToken) {
+          return storedToken;
+        }
+        
+        throw new Error('No stored authentication token available');
+      }
+      throw new Error('Window not available');
+    } catch (error) {
+      console.error('Failed to get auth token:', error);
+      throw new Error('Authentication failed');
+    }
   }
   
   // Force sync (called when user manually triggers)

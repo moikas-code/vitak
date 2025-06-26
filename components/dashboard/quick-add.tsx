@@ -9,10 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/trpc/provider";
 import { useToast } from "@/lib/hooks/use-toast";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, Wifi, WifiOff } from "lucide-react";
 import type { Food } from "@/lib/types";
 import { track_meal_event, track_search_event } from "@/lib/analytics";
 import { SaveAsPresetButton } from "./save-as-preset-button";
+import { useOfflineMealLogs, useOfflineFoodSearch, useConnectionStatus } from "@/lib/offline/hooks";
 
 const add_meal_schema = z.object({
   food_id: z.string().min(1, "Please select a food"),
@@ -25,37 +26,15 @@ export function QuickAdd() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { data: foods, isLoading } = api.food.search.useQuery(
-    { query: search },
-    { enabled: search.length > 0 }
-  );
-
+  // Use offline-capable hooks
+  const { foods, is_loading } = useOfflineFoodSearch(search);
+  const { addMealLog } = useOfflineMealLogs();
+  const { is_online, unsynced_count } = useConnectionStatus();
+  
+  // Keep utils for invalidation when online
   const utils = api.useUtils();
-  const addMeal = api.mealLog.add.useMutation({
-    onSuccess: () => {
-      track_meal_event('saved', {
-        food_category: selectedFood?.category,
-        vitamin_k_amount: selectedFood && selectedFood.vitamin_k_mcg_per_100g > 50 ? 'high' : selectedFood && selectedFood.vitamin_k_mcg_per_100g > 20 ? 'medium' : 'low'
-      });
-      toast({
-        title: "Meal logged",
-        description: "Your meal has been added successfully.",
-      });
-      setSelectedFood(null);
-      setSearch("");
-      reset();
-      utils.mealLog.getToday.invalidate();
-      utils.credit.getAllBalances.invalidate();
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to log meal. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
 
   const {
     register,
@@ -68,8 +47,45 @@ export function QuickAdd() {
     resolver: zodResolver(add_meal_schema),
   });
 
-  const onSubmit = (data: AddMealForm) => {
-    addMeal.mutate(data);
+  const onSubmit = async (data: AddMealForm) => {
+    if (!selectedFood) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      await addMealLog(data.food_id, data.portion_size_g);
+      
+      track_meal_event('saved', {
+        food_category: selectedFood.category,
+        vitamin_k_amount: selectedFood.vitamin_k_mcg_per_100g > 50 ? 'high' : selectedFood.vitamin_k_mcg_per_100g > 20 ? 'medium' : 'low'
+      });
+      
+      toast({
+        title: "Meal logged",
+        description: is_online 
+          ? "Your meal has been added successfully." 
+          : "Meal saved offline. Will sync when connection is restored.",
+      });
+      
+      setSelectedFood(null);
+      setSearch("");
+      reset();
+      
+      // Invalidate queries if online
+      if (is_online) {
+        utils.mealLog.getToday.invalidate();
+        utils.credit.getAllBalances.invalidate();
+      }
+    } catch (error) {
+      console.error('Failed to add meal:', error);
+      toast({
+        title: "Error",
+        description: "Failed to log meal. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const selectFood = (food: Food) => {
@@ -107,9 +123,21 @@ export function QuickAdd() {
         </div>
       </div>
 
-      {isLoading && (
+      {is_loading && (
         <p className="text-sm text-muted-foreground">Searching...</p>
       )}
+      
+      {/* Connection status indicator */}
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        {is_online ? (
+          <><Wifi className="h-3 w-3" /> Online</>
+        ) : (
+          <><WifiOff className="h-3 w-3" /> Offline</>
+        )}
+        {unsynced_count > 0 && (
+          <span className="text-amber-600">({unsynced_count} pending sync)</span>
+        )}
+      </div>
 
       {foods && foods.length > 0 && !selectedFood && (
         <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -181,9 +209,9 @@ export function QuickAdd() {
           </div>
 
           <div className="flex gap-2 flex-wrap">
-            <Button type="submit" disabled={addMeal.isPending}>
+            <Button type="submit" disabled={isSubmitting}>
               <Plus className="mr-2 h-4 w-4" />
-              Add Meal
+              {isSubmitting ? "Adding..." : "Add Meal"}
             </Button>
             <SaveAsPresetButton
               food={selectedFood}
