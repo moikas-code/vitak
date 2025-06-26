@@ -4,6 +4,8 @@ import { WebhookEvent } from "@clerk/nextjs/server";
 import { supabaseServiceRole } from "@/lib/db/supabase-server";
 
 export async function POST(req: Request) {
+  console.log("[Clerk Webhook] Received webhook request");
+  
   // Get the headers
   const headerPayload = await headers();
   const svix_id = headerPayload.get("svix-id");
@@ -12,8 +14,19 @@ export async function POST(req: Request) {
 
   // If there are no headers, error out
   if (!svix_id || !svix_timestamp || !svix_signature) {
+    console.error("[Clerk Webhook] Missing svix headers");
     return new Response("Error occured -- no svix headers", {
       status: 400,
+    });
+  }
+
+  // Check if webhook secret is configured
+  if (!process.env.CLERK_WEBHOOK_SECRET) {
+    console.error("[Clerk Webhook] CLERK_WEBHOOK_SECRET is not configured in environment variables");
+    console.error("[Clerk Webhook] Please add CLERK_WEBHOOK_SECRET to your .env file");
+    console.error("[Clerk Webhook] You can find this in your Clerk Dashboard > Webhooks > Endpoint Details");
+    return new Response("Webhook secret not configured", {
+      status: 500,
     });
   }
 
@@ -22,7 +35,7 @@ export async function POST(req: Request) {
   const body = JSON.stringify(payload);
 
   // Create a new Svix instance with your webhook secret
-  const wh = new Webhook(process.env.CLERK_WEBHOOK_SECRET || "");
+  const wh = new Webhook(process.env.CLERK_WEBHOOK_SECRET);
 
   let evt: WebhookEvent;
 
@@ -42,6 +55,7 @@ export async function POST(req: Request) {
 
   // Handle the webhook
   const eventType = evt.type;
+  console.log(`[Clerk Webhook] Received event: ${eventType}`, evt.data.id);
 
   if (eventType === "user.created" || eventType === "user.updated") {
     const { id, email_addresses, username, first_name, last_name, image_url } = evt.data;
@@ -88,7 +102,8 @@ export async function POST(req: Request) {
         console.error("Error creating user settings:", settingsError);
       }
 
-      console.log(`User ${eventType === "user.created" ? "created" : "updated"}: ${id}`);
+      console.log(`[Clerk Webhook] Successfully ${eventType === "user.created" ? "created" : "updated"} user: ${id}`);
+      console.log(`[Clerk Webhook] User email: ${primaryEmail?.email_address || 'No email'}`);
     } catch (error) {
       console.error("Database error:", error);
       return new Response("Database error", { status: 500 });
@@ -115,5 +130,6 @@ export async function POST(req: Request) {
     }
   }
 
+  console.log(`[Clerk Webhook] Webhook processed successfully for event: ${eventType}`);
   return new Response("", { status: 200 });
 }
