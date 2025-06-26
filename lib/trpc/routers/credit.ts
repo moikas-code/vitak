@@ -1,6 +1,6 @@
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { vitamin_k_period_schema } from "@/lib/types";
-import { supabaseAdmin } from "@/lib/db/supabase";
+import { createServerSupabaseClient } from "@/lib/db/supabase-server";
 import { TRPCError } from "@trpc/server";
 
 function get_period_dates(period: "daily" | "weekly" | "monthly") {
@@ -40,7 +40,8 @@ export const creditRouter = createTRPCRouter({
       const period = input ?? "daily";
       
       // Get user settings
-      const { data: settings, error: settingsError } = await supabaseAdmin
+      const supabase = await createServerSupabaseClient();
+      const { data: settings, error: settingsError } = await supabase
         .from("user_settings")
         .select("daily_limit, weekly_limit, monthly_limit")
         .eq("user_id", ctx.session.userId)
@@ -56,7 +57,7 @@ export const creditRouter = createTRPCRouter({
       const { period_start, period_end } = get_period_dates(period);
 
       // Calculate credits used in the period
-      const { data: mealLogs, error: logsError } = await supabaseAdmin
+      const { data: mealLogs, error: logsError } = await supabase
         .from("meal_logs")
         .select("vitamin_k_consumed_mcg")
         .eq("user_id", ctx.session.userId)
@@ -89,7 +90,8 @@ export const creditRouter = createTRPCRouter({
 
   getAllBalances: protectedProcedure.query(async ({ ctx }) => {
     // Get user settings
-    const { data: settings, error: settingsError } = await supabaseAdmin
+    const supabase = await createServerSupabaseClient();
+    const { data: settings, error: settingsError } = await supabase
       .from("user_settings")
       .select("daily_limit, weekly_limit, monthly_limit")
       .eq("user_id", ctx.session.userId)
@@ -116,7 +118,7 @@ export const creditRouter = createTRPCRouter({
       const { period_start, period_end } = get_period_dates(period);
 
       // Calculate credits used in each period
-      const { data: mealLogs, error: logsError } = await supabaseAdmin
+      const { data: mealLogs, error: logsError } = await supabase
         .from("meal_logs")
         .select("vitamin_k_consumed_mcg")
         .eq("user_id", ctx.session.userId)

@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
-import { supabaseAdmin } from "@/lib/db/supabase";
+import { createServerSupabaseClient } from "@/lib/db/supabase-server";
 
 export const userRouter = createTRPCRouter({
   getCurrentUser: protectedProcedure.query(async ({ ctx }) => {
-    const { data, error } = await supabaseAdmin
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
       .from("users")
       .select("*")
       .eq("clerk_user_id", ctx.session.userId)
@@ -34,7 +35,8 @@ export const userRouter = createTRPCRouter({
     )
     .mutation(async ({ input }) => {
       // Use the database function to get or create user
-      const { data, error } = await supabaseAdmin.rpc("get_or_create_user", {
+      const supabase = await createServerSupabaseClient();
+      const { data, error } = await supabase.rpc("get_or_create_user", {
         p_clerk_user_id: input.clerk_user_id,
         p_email: input.email,
         p_username: input.username,
@@ -54,7 +56,8 @@ export const userRouter = createTRPCRouter({
     }),
 
   getSettings: protectedProcedure.query(async ({ ctx }) => {
-    const { data, error } = await supabaseAdmin
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
       .from("user_settings")
       .select("*")
       .eq("user_id", ctx.session.userId)
@@ -69,7 +72,7 @@ export const userRouter = createTRPCRouter({
 
     // If no settings exist, create default ones
     if (!data) {
-      const { data: newSettings, error: insertError } = await supabaseAdmin
+      const { data: newSettings, error: insertError } = await supabase
         .from("user_settings")
         .insert({
           user_id: ctx.session.userId,
@@ -112,7 +115,8 @@ export const userRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { data, error } = await supabaseAdmin
+      const supabase = await createServerSupabaseClient();
+      const { data, error } = await supabase
         .from("user_settings")
         .update({
           ...input,

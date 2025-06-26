@@ -41,7 +41,7 @@ export function LegalLayout({ children, title, lastUpdated }: LegalLayoutProps) 
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
             <div className="text-sm text-gray-600">
-              © 2024 VitaK Tracker. All rights reserved.
+              © 2025 VitaK Tracker. All rights reserved.
             </div>
             <div className="flex gap-4 text-sm">
               <Link href="/privacy" className="text-gray-600 hover:text-gray-900">

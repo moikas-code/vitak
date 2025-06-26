@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { food_category_schema } from "@/lib/types";
-import { supabaseAdmin } from "@/lib/db/supabase";
+import { createServerSupabaseClient } from "@/lib/db/supabase-server";
 import { TRPCError } from "@trpc/server";
 
 export const foodRouter = createTRPCRouter({
@@ -13,8 +13,9 @@ export const foodRouter = createTRPCRouter({
         limit: z.number().min(1).max(50).default(20),
       })
     )
-    .query(async ({ input }) => {
-      let query = supabaseAdmin
+    .query(async ({ ctx: _ctx, input }) => {
+      const supabase = await createServerSupabaseClient();
+      let query = supabase
         .from("foods")
         .select("*")
         .ilike("name", `%${input.query}%`)
@@ -43,8 +44,9 @@ export const foodRouter = createTRPCRouter({
 
   getById: protectedProcedure
     .input(z.string())
-    .query(async ({ input }) => {
-      const { data, error } = await supabaseAdmin
+    .query(async ({ ctx: _ctx, input }) => {
+      const supabase = await createServerSupabaseClient();
+      const { data, error } = await supabase
         .from("foods")
         .select("*")
         .eq("id", input)
@@ -64,7 +66,7 @@ export const foodRouter = createTRPCRouter({
       };
     }),
 
-  getCategories: protectedProcedure.query(async () => {
+  getCategories: protectedProcedure.query(async ({ ctx: _ctx }) => {
     return [
       { value: "vegetables", label: "Vegetables" },
       { value: "fruits", label: "Fruits" },

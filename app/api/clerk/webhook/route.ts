@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { Webhook } from "svix";
 import { WebhookEvent } from "@clerk/nextjs/server";
-import { supabaseAdmin } from "@/lib/db/supabase";
+import { supabaseServiceRole } from "@/lib/db/supabase-server";
 
 export async function POST(req: Request) {
   // Get the headers
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
     
     try {
       // Upsert user in database
-      const { error } = await supabaseAdmin
+      const { error } = await supabaseServiceRole
         .from("users")
         .upsert({
           clerk_user_id: id,
@@ -71,7 +71,7 @@ export async function POST(req: Request) {
       }
 
       // Also ensure user_settings exist
-      const { error: settingsError } = await supabaseAdmin
+      const { error: settingsError } = await supabaseServiceRole
         .from("user_settings")
         .upsert({
           user_id: id,

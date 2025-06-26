@@ -72,7 +72,7 @@ export function Footer() {
         <div className="border-t pt-6 mt-8">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
             <div className="text-sm text-gray-600">
-              © 2024 VitaK Tracker. All rights reserved.
+              © 2025 VitaK Tracker. All rights reserved.
             </div>
             <div className="flex gap-6 text-sm">
               <Link href="/privacy" className="text-gray-600 hover:text-gray-900 transition-colors">
