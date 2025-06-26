@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Activity, Home, Settings, UtensilsCrossed } from "lucide-react";
+import { Menu, Activity, Home, Settings, UtensilsCrossed, Calculator, FileText } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -17,8 +17,10 @@ import { FeedbackButton } from "@/components/feedback/feedback-button";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
+  { name: "Calculator", href: "/vitamin-k-calculator", icon: Calculator },
   { name: "Log Meal", href: "/dashboard/log-meal", icon: UtensilsCrossed },
   { name: "History", href: "/dashboard/history", icon: Activity },
+  { name: "Food Chart", href: "/warfarin-food-chart", icon: FileText },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 

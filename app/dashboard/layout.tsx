@@ -1,6 +1,6 @@
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
-import { Activity, Home, Settings, UtensilsCrossed } from "lucide-react";
+import { Activity, Home, Settings, UtensilsCrossed, Calculator, FileText } from "lucide-react";
 import { DonateButton } from "@/components/donate/donate-button";
 import { FeedbackButton } from "@/components/feedback/feedback-button";
 import { UserSync } from "@/components/auth/user-sync";
@@ -35,6 +35,13 @@ export default function DashboardLayout({
                   Dashboard
                 </Link>
                 <Link
+                  href="/vitamin-k-calculator"
+                  className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+                >
+                  <Calculator className="h-4 w-4" />
+                  Calculator
+                </Link>
+                <Link
                   href="/dashboard/log-meal"
                   className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
                 >
@@ -47,6 +54,13 @@ export default function DashboardLayout({
                 >
                   <Activity className="h-4 w-4" />
                   History
+                </Link>
+                <Link
+                  href="/warfarin-food-chart"
+                  className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+                >
+                  <FileText className="h-4 w-4" />
+                  Food Chart
                 </Link>
                 <Link
                   href="/dashboard/settings"
