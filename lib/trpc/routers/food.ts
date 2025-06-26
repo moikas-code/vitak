@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure } from "../trpc";
+import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 import { food_category_schema } from "@/lib/types";
 import { createServerSupabaseClient } from "@/lib/db/supabase-server";
 import { TRPCError } from "@trpc/server";
@@ -80,5 +80,38 @@ export const foodRouter = createTRPCRouter({
       { value: "beverages", label: "Beverages" },
       { value: "other", label: "Other" },
     ];
+  }),
+
+  getCommonFoods: publicProcedure.query(async ({ ctx: _ctx }) => {
+    const supabase = await createServerSupabaseClient();
+    
+    // Get a selection of common foods from different categories
+    const commonFoodNames = [
+      'Spinach (cooked)',
+      'Kale (cooked)',
+      'Broccoli (cooked)',
+      'Romaine lettuce',
+      'Cabbage (raw)',
+      'Chicken breast',
+      'Salmon',
+      'Eggs',
+      'Milk (whole)',
+      'White rice'
+    ];
+    
+    const { data, error } = await supabase
+      .from("foods")
+      .select("id, name, vitamin_k_mcg_per_100g")
+      .in("name", commonFoodNames)
+      .order("name");
+    
+    if (error) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to fetch common foods",
+      });
+    }
+    
+    return data;
   }),
 });

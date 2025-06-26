@@ -6,6 +6,9 @@ import { Footer } from "@/components/ui/footer";
 import { AlertCircle, Apple, Carrot, Leaf, Search } from "lucide-react";
 import { BreadcrumbLD } from "@/components/seo/json-ld";
 
+export const dynamic = 'force-static';
+export const revalidate = 86400; // Revalidate daily
+
 export const metadata: Metadata = {
   title: "Vitamin K Foods List for Warfarin Patients - Complete Guide",
   description: "Comprehensive guide to vitamin K content in foods for warfarin (Coumadin) patients. Learn which foods to limit, moderate, and enjoy freely while maintaining stable INR levels.",

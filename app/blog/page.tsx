@@ -3,62 +3,33 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Footer } from "@/components/ui/footer";
-import { Calendar, Clock, ArrowRight, ExternalLink } from "lucide-react";
+import { Calendar, Clock, ArrowRight, ExternalLink, Rss } from "lucide-react";
 import { BreadcrumbLD } from "@/components/seo/json-ld";
+import { fetchBlogPosts } from "@/lib/utils/rss-parser";
 
 export const metadata: Metadata = {
-  title: "VitaK Tracker Blog - Warfarin Diet Tips & Vitamin K Management",
-  description: "Expert articles on managing vitamin K intake while on warfarin. Learn about INR stability, diet tips, food guides, and the latest updates to VitaK Tracker.",
-  keywords: ["warfarin blog", "vitamin k articles", "INR management tips", "anticoagulation diet blog", "blood thinner resources"],
+  title: "Health Articles - VitaK Tracker & Moikas Blog",
+  description: "Health-focused articles from Moikas Blog covering VitaK Tracker updates, vitamin K management, warfarin diet tips, and general wellness topics.",
+  keywords: ["health blog", "vitamin k articles", "VitaK Tracker updates", "warfarin diet tips", "wellness articles", "Moikas health posts"],
   openGraph: {
-    title: "VitaK Tracker Blog - Expert Warfarin Diet Guidance",
-    description: "Stay informed with the latest tips on vitamin K management and warfarin diet strategies.",
+    title: "Health Articles from Moikas Blog - VitaK Tracker Updates",
+    description: "Stay informed with health-focused content and VitaK Tracker updates from Moikas Blog.",
     type: "website",
   },
 };
 
-// This would typically fetch from your blog API
-// For now, we'll use static data as an example
-const blogPosts = [
-  {
-    id: 1,
-    title: "Understanding Vitamin K and Warfarin Interaction",
-    excerpt: "Learn the science behind why vitamin K affects warfarin and how to maintain stable INR levels through consistent intake.",
-    date: "2024-01-15",
-    readTime: "5 min",
-    category: "Education",
-    url: "https://blog.moikas.com/vitamin-k-warfarin-interaction",
-  },
-  {
-    id: 2,
-    title: "Top 20 Low Vitamin K Foods for Your Diet",
-    excerpt: "Discover delicious foods that are naturally low in vitamin K, perfect for maintaining your warfarin therapy.",
-    date: "2024-01-10",
-    readTime: "8 min",
-    category: "Food Lists",
-    url: "https://blog.moikas.com/low-vitamin-k-foods",
-  },
-  {
-    id: 3,
-    title: "VitaK Tracker Update: New Features for 2024",
-    excerpt: "We've added meal presets, improved portion tracking, and enhanced our food database. See what's new!",
-    date: "2024-01-05",
-    readTime: "3 min",
-    category: "Updates",
-    url: "https://blog.moikas.com/vitak-tracker-2024-update",
-  },
-  {
-    id: 4,
-    title: "Creating a Balanced Warfarin Diet Plan",
-    excerpt: "Step-by-step guide to creating a sustainable diet plan that keeps your vitamin K intake consistent.",
-    date: "2023-12-28",
-    readTime: "10 min",
-    category: "Meal Planning",
-    url: "https://blog.moikas.com/warfarin-diet-plan",
-  },
-];
+export const revalidate = 3600; // Revalidate every hour
 
-export default function BlogPage() {
+// Helper function to estimate read time
+function estimateReadTime(text: string): string {
+  const wordsPerMinute = 200;
+  const wordCount = text.split(/\s+/).length;
+  const minutes = Math.ceil(wordCount / wordsPerMinute);
+  return `${minutes} min read`;
+}
+
+export default async function BlogPage() {
+  const blogPosts = await fetchBlogPosts();
   return (
     <>
       <BreadcrumbLD items={[
@@ -84,61 +55,73 @@ export default function BlogPage() {
           <div className="max-w-6xl mx-auto">
             <div className="mb-8">
               <h1 className="text-4xl font-bold mb-4">
-                VitaK Tracker Blog
+                Health Articles from Moikas Blog
               </h1>
               <p className="text-xl text-gray-600">
-                Expert guidance on managing vitamin K intake while on warfarin therapy
+                Health-focused content including VitaK Tracker updates and wellness tips
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                Showing health-related articles from <a href="https://blog.moikas.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">blog.moikas.com</a>
               </p>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {blogPosts.map((post) => (
-                <Card key={post.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-primary font-medium">
-                        {post.category}
-                      </span>
-                      <div className="flex items-center text-sm text-gray-500">
-                        <Clock className="h-3 w-3 mr-1" />
-                        {post.readTime}
+              {blogPosts.length > 0 ? (
+                blogPosts.slice(0, 9).map((post) => (
+                  <Card key={post.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <div className="flex items-center justify-between mb-2">
+                        {post.category && (
+                          <span className="text-sm text-primary font-medium">
+                            {post.category}
+                          </span>
+                        )}
+                        <div className="flex items-center text-sm text-gray-500">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {estimateReadTime(post.description)}
+                        </div>
                       </div>
-                    </div>
-                    <CardTitle className="line-clamp-2">
-                      {post.title}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <CardDescription className="mb-4 line-clamp-3">
-                      {post.excerpt}
-                    </CardDescription>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center text-sm text-gray-500">
-                        <Calendar className="h-3 w-3 mr-1" />
-                        {new Date(post.date).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}
+                      <CardTitle className="line-clamp-2">
+                        {post.title}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <CardDescription className="mb-4 line-clamp-3">
+                        {post.description}
+                      </CardDescription>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center text-sm text-gray-500">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {new Date(post.pubDate).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </div>
+                        <a
+                          href={post.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:text-primary/80 font-medium text-sm flex items-center gap-1"
+                        >
+                          Read More
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
                       </div>
-                      <a
-                        href={post.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:text-primary/80 font-medium text-sm flex items-center gap-1"
-                      >
-                        Read More
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <div className="col-span-full text-center py-8">
+                  <p className="text-gray-500">No health-related articles available at the moment.</p>
+                  <p className="text-sm text-gray-400 mt-2">Check back later for VitaK Tracker updates and health content.</p>
+                </div>
+              )}
             </div>
 
             <div className="mt-12 text-center">
               <p className="text-gray-600 mb-4">
-                Want to see more articles about warfarin diet management?
+                Want to see all articles including non-health topics?
               </p>
               <a
                 href="https://blog.moikas.com"
@@ -147,7 +130,7 @@ export default function BlogPage() {
                 className="inline-flex items-center gap-2"
               >
                 <Button variant="outline">
-                  Visit Our Full Blog
+                  Visit Moikas Blog
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </a>
@@ -155,18 +138,24 @@ export default function BlogPage() {
 
             <Card className="mt-12 bg-primary/5 border-primary/20">
               <CardHeader>
-                <CardTitle>Stay Updated</CardTitle>
+                <CardTitle>Stay Updated with Health Content</CardTitle>
                 <CardDescription>
-                  Get the latest tips on vitamin K management and app updates
+                  Get health articles and VitaK Tracker updates from Moikas Blog
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-gray-600 mb-4">
-                  Follow our blog for weekly articles on warfarin diet strategies, 
-                  new food discoveries, and VitaK Tracker feature announcements.
+                  This page shows health-related articles from Moikas Blog, including 
+                  VitaK Tracker updates, wellness tips, and nutrition information.
                 </p>
                 <div className="flex gap-4">
-                  <a href="/blog/rss.xml" className="text-primary hover:text-primary/80 text-sm font-medium">
+                  <a 
+                    href="https://blog.moikas.com/api/rss" 
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1"
+                  >
+                    <Rss className="h-4 w-4" />
                     RSS Feed
                   </a>
                   <a 
@@ -193,18 +182,18 @@ export default function BlogPage() {
           __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Blog",
-            "name": "VitaK Tracker Blog",
-            "description": "Expert articles on managing vitamin K intake while on warfarin",
+            "name": "Health Articles - Moikas Blog",
+            "description": "Health-focused content from Moikas Blog including VitaK Tracker updates",
             "url": `${process.env.NEXT_PUBLIC_APP_URL || 'https://vitaktracker.com'}/blog`,
-            "blogPost": blogPosts.map(post => ({
+            "blogPost": blogPosts.slice(0, 9).map(post => ({
               "@type": "BlogPosting",
               "headline": post.title,
-              "description": post.excerpt,
-              "datePublished": post.date,
-              "url": post.url,
+              "description": post.description,
+              "datePublished": post.pubDate,
+              "url": post.link,
               "author": {
                 "@type": "Organization",
-                "name": "VitaK Tracker Team"
+                "name": post.author || "VitaK Tracker Team"
               },
               "publisher": {
                 "@type": "Organization", 

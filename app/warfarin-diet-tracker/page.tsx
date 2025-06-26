@@ -6,6 +6,9 @@ import { Footer } from "@/components/ui/footer";
 import { Activity, CheckCircle, Heart, LineChart, Smartphone, Users } from "lucide-react";
 import { BreadcrumbLD } from "@/components/seo/json-ld";
 
+export const dynamic = 'force-static';
+export const revalidate = 86400; // Revalidate daily
+
 export const metadata: Metadata = {
   title: "Free Warfarin Diet Tracker App - Monitor Vitamin K Intake",
   description: "Track vitamin K intake while on warfarin with our free diet management app. Credit-based system, comprehensive food database, and INR stability tools for Coumadin patients.",
