@@ -177,7 +177,13 @@ export default function HistoryPage() {
                           >
                             <span>{log.food?.name || "Unknown Food"}</span>
                             <span>
-                              {log.portion_size_g}g • {log.vitamin_k_consumed_mcg.toFixed(1)} mcg
+                              {log.portion_size_g}g
+                              {log.food?.common_portion_name && log.food?.common_portion_size_g && (
+                                <span className="text-xs">
+                                  {" "}({(log.portion_size_g / log.food.common_portion_size_g).toFixed(1)} × {log.food.common_portion_name})
+                                </span>
+                              )}
+                              {" "}• {log.vitamin_k_consumed_mcg.toFixed(1)} mcg
                             </span>
                           </div>
                         ))}

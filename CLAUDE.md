@@ -78,7 +78,7 @@ VitaK Tracker is a PWA for Vitamin K intake management built with Next.js 15 App
 - Credit display components expect balance objects with `credits_used`/`credits_limit`
 
 **Migration Conventions:**
-- Use `bunx supabase migration new <name>` to create migration files
+- Always use `bun new:migration` to create new migrations for supabase
 - Migration files follow format: `YYYYMMDDHHMMSS_description.sql`
 - Never edit existing migrations; create new ones for changes
 

@@ -13,12 +13,37 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
+    
+    // Require authentication for donations
+    if (!session?.userId) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
     const { amount } = await req.json();
 
-    // Validate amount
-    if (!amount || amount < 100) {
+    // Validate amount (in cents)
+    if (!amount || typeof amount !== "number" || amount < 100) {
       return NextResponse.json(
         { error: "Invalid amount. Minimum is $1.00" },
+        { status: 400 }
+      );
+    }
+
+    // Maximum amount validation (e.g., $10,000)
+    if (amount > 1000000) {
+      return NextResponse.json(
+        { error: "Amount exceeds maximum allowed" },
+        { status: 400 }
+      );
+    }
+
+    // Ensure amount is an integer (no fractional cents)
+    if (!Number.isInteger(amount)) {
+      return NextResponse.json(
+        { error: "Amount must be a whole number of cents" },
         { status: 400 }
       );
     }
@@ -44,7 +69,7 @@ export async function POST(req: NextRequest) {
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/donate/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
       metadata: {
-        user_id: session?.userId || "anonymous",
+        userId: session.userId,
         donation_type: "one-time",
       },
     });

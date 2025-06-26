@@ -19,9 +19,15 @@ END $$;
 DROP POLICY IF EXISTS "Users can view own settings" ON user_settings;
 DROP POLICY IF EXISTS "Users can insert own settings" ON user_settings;
 DROP POLICY IF EXISTS "Users can update own settings" ON user_settings;
+DROP POLICY IF EXISTS "Users can delete own settings" ON user_settings;
 DROP POLICY IF EXISTS "Users can view own meal logs" ON meal_logs;
 DROP POLICY IF EXISTS "Users can insert own meal logs" ON meal_logs;
+DROP POLICY IF EXISTS "Users can update own meal logs" ON meal_logs;
 DROP POLICY IF EXISTS "Users can delete own meal logs" ON meal_logs;
+DROP POLICY IF EXISTS "Users can view own meal presets" ON meal_presets;
+DROP POLICY IF EXISTS "Users can insert own meal presets" ON meal_presets;
+DROP POLICY IF EXISTS "Users can update own meal presets" ON meal_presets;
+DROP POLICY IF EXISTS "Users can delete own meal presets" ON meal_presets;
 DROP POLICY IF EXISTS "Users can view own data" ON users;
 DROP POLICY IF EXISTS "System can manage users" ON users;
 
@@ -52,6 +58,19 @@ CREATE POLICY "Users can update own meal logs" ON meal_logs
 CREATE POLICY "Users can delete own meal logs" ON meal_logs
   FOR DELETE USING (true); -- Controlled by application layer
 
+-- Meal presets policies
+CREATE POLICY "Users can view own meal presets" ON meal_presets
+  FOR SELECT USING (true); -- Controlled by application layer
+
+CREATE POLICY "Users can insert own meal presets" ON meal_presets
+  FOR INSERT WITH CHECK (true); -- Controlled by application layer
+
+CREATE POLICY "Users can update own meal presets" ON meal_presets
+  FOR UPDATE USING (true); -- Controlled by application layer
+
+CREATE POLICY "Users can delete own meal presets" ON meal_presets
+  FOR DELETE USING (true); -- Controlled by application layer
+
 -- Users table policies
 CREATE POLICY "Users can view own data" ON users
   FOR SELECT USING (true); -- Controlled by application layer
@@ -59,6 +78,18 @@ CREATE POLICY "Users can view own data" ON users
 -- All operations allowed - controlled by application layer
 CREATE POLICY "Service role can manage users" ON users
   FOR ALL USING (true); -- Webhook access controlled by application
+
+-- Enable RLS on meal_presets table (if not already enabled)
+DO $$ 
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_tables 
+    WHERE schemaname = 'public' 
+    AND tablename = 'meal_presets'
+  ) THEN
+    ALTER TABLE meal_presets ENABLE ROW LEVEL SECURITY;
+  END IF;
+END $$;
 
 -- Enable RLS on foods table for consistency (if not already enabled)
 DO $$ 

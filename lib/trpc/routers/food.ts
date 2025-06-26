@@ -8,7 +8,10 @@ export const foodRouter = createTRPCRouter({
   search: protectedProcedure
     .input(
       z.object({
-        query: z.string().min(1),
+        query: z.string().min(1).max(100).transform((val) => {
+          // Escape special characters that have meaning in ILIKE patterns
+          return val.replace(/[%_\\]/g, '\\$&');
+        }),
         category: food_category_schema.optional(),
         limit: z.number().min(1).max(50).default(20),
       })

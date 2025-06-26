@@ -72,7 +72,7 @@ export function SaveAsPresetButton({ food, portion_size_g, onSuccess }: SaveAsPr
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline">
           <Bookmark className="mr-2 h-4 w-4" />
           Save as Preset
         </Button>

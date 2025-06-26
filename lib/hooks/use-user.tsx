@@ -25,7 +25,14 @@ export function useUser() {
   const ensureUserMutation = api.user.ensureUserExists.useMutation();
 
   useEffect(() => {
-    if (isSignedIn && clerkUser && !dbUser && !dbLoading) {
+    if (
+      isSignedIn && 
+      clerkUser && 
+      !dbUser && 
+      !dbLoading && 
+      !ensureUserMutation.isPending &&
+      !ensureUserMutation.isSuccess
+    ) {
       // If signed in but no database user, create one
       ensureUserMutation.mutate({
         clerk_user_id: clerkUser.id,
@@ -40,7 +47,16 @@ export function useUser() {
         },
       });
     }
-  }, [isSignedIn, clerkUser, dbUser, dbLoading]);
+  }, [
+    isSignedIn, 
+    clerkUser, 
+    dbUser, 
+    dbLoading, 
+    ensureUserMutation.isPending,
+    ensureUserMutation.isSuccess,
+    ensureUserMutation,
+    refetch
+  ]);
 
   return {
     clerkUser,

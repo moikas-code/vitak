@@ -2,7 +2,7 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { createServerSupabaseClient } from "@/lib/db/supabase-server";
 import { TRPCError } from "@trpc/server";
-import { checkRateLimit, RATE_LIMITS, RateLimitError } from "@/lib/security/rate-limit";
+import { checkRateLimit, RATE_LIMITS, RateLimitError } from "@/lib/security/rate-limit-redis";
 
 export const mealLogRouter = createTRPCRouter({
   add: protectedProcedure
@@ -15,7 +15,7 @@ export const mealLogRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       // Check rate limit
       try {
-        checkRateLimit(ctx.session.userId, "meal_log", RATE_LIMITS.MEAL_LOG);
+        await checkRateLimit(ctx.session.userId, "meal_log", RATE_LIMITS.MEAL_LOG);
       } catch (error) {
         if (error instanceof RateLimitError) {
           throw new TRPCError({
@@ -74,7 +74,7 @@ export const mealLogRouter = createTRPCRouter({
   getToday: protectedProcedure.query(async ({ ctx }) => {
     // Check rate limit for read operations
     try {
-      checkRateLimit(ctx.session.userId, "read", RATE_LIMITS.READ);
+      await checkRateLimit(ctx.session.userId, "read", RATE_LIMITS.READ);
     } catch (error) {
       if (error instanceof RateLimitError) {
         throw new TRPCError({

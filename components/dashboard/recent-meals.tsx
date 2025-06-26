@@ -50,7 +50,13 @@ export function RecentMeals({ meals }: RecentMealsProps) {
           <div>
             <div className="font-medium">{meal.food?.name || "Unknown Food"}</div>
             <div className="text-sm text-muted-foreground">
-              {meal.portion_size_g}g • {meal.vitamin_k_consumed_mcg.toFixed(1)} mcg
+              {meal.portion_size_g}g
+              {meal.food?.common_portion_name && meal.food?.common_portion_size_g && (
+                <span className="text-xs">
+                  {" "}({(meal.portion_size_g / meal.food.common_portion_size_g).toFixed(1)} × {meal.food.common_portion_name})
+                </span>
+              )}
+              {" "}• {meal.vitamin_k_consumed_mcg.toFixed(1)} mcg
             </div>
           </div>
           <Button

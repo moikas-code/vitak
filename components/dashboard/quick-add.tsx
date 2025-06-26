@@ -121,7 +121,10 @@ export function QuickAdd() {
             >
               <div className="font-medium">{food.name}</div>
               <div className="text-sm text-muted-foreground">
-                {food.vitamin_k_mcg_per_100g} mcg per 100g
+                <div>{food.vitamin_k_mcg_per_100g} mcg per 100g</div>
+                <div className="text-xs">
+                  {food.common_portion_name} ({food.common_portion_size_g}g): {((food.vitamin_k_mcg_per_100g * food.common_portion_size_g) / 100).toFixed(1)} mcg
+                </div>
               </div>
             </button>
           ))}
@@ -133,12 +136,26 @@ export function QuickAdd() {
           <div className="p-3 rounded-lg border bg-accent/50">
             <div className="font-medium">{selectedFood.name}</div>
             <div className="text-sm text-muted-foreground">
-              {selectedFood.vitamin_k_mcg_per_100g} mcg per 100g
+              <div>{selectedFood.vitamin_k_mcg_per_100g} mcg per 100g</div>
+              <div className="text-xs">
+                Common portion: {selectedFood.common_portion_name} ({selectedFood.common_portion_size_g}g)
+              </div>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="portion">Portion size (g)</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="portion">Portion size (g)</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setValue("portion_size_g", selectedFood.common_portion_size_g)}
+                className="text-xs"
+              >
+                Use {selectedFood.common_portion_name}
+              </Button>
+            </div>
             <Input
               id="portion"
               type="number"
@@ -151,9 +168,16 @@ export function QuickAdd() {
                 {errors.portion_size_g.message}
               </p>
             )}
-            <p className="text-xs text-muted-foreground">
-              {selectedFood.common_portion_name} = {selectedFood.common_portion_size_g}g
-            </p>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">
+                {selectedFood.common_portion_name} = {selectedFood.common_portion_size_g}g
+              </p>
+              {watch("portion_size_g") && (
+                <p className="text-sm font-medium text-primary">
+                  Vitamin K: {((selectedFood.vitamin_k_mcg_per_100g * (watch("portion_size_g") || 0)) / 100).toFixed(1)} mcg
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="flex gap-2 flex-wrap">
