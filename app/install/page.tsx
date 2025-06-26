@@ -110,7 +110,7 @@ export default function InstallPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Track your meals even without internet
+              Log meals offline with encrypted local storage
             </p>
           </CardContent>
         </Card>
@@ -146,7 +146,7 @@ export default function InstallPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Your data stays safe on your device
+              Data encrypted locally with automatic cloud sync
             </p>
           </CardContent>
         </Card>

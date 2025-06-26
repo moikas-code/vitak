@@ -5,6 +5,9 @@ import { Footer } from "@/components/ui/footer";
 import { Activity, Apple, Shield, TrendingUp, Download } from "lucide-react";
 import { WebApplicationLD, MedicalWebPageLD, OrganizationLD, FAQLD } from "@/components/seo/json-ld";
 
+export const dynamic = 'force-static';
+export const revalidate = 3600; // Revalidate every hour
+
 export default function HomePage() {
   return (
     <>

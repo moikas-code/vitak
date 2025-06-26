@@ -59,6 +59,16 @@ export function Footer() {
                   Blog
                 </Link>
               </li>
+              <li>
+                <Link href="/vitamin-k-calculator" className="text-gray-600 hover:text-gray-900 transition-colors">
+                  Vitamin K Calculator
+                </Link>
+              </li>
+              <li>
+                <Link href="/warfarin-food-chart" className="text-gray-600 hover:text-gray-900 transition-colors">
+                  Food Chart
+                </Link>
+              </li>
             </ul>
           </div>
           

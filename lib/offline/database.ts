@@ -126,15 +126,13 @@ export async function get_offline_db(): Promise<IDBPDatabase<VitaKOfflineDB>> {
 export async function clear_offline_database(): Promise<void> {
   const db = await get_offline_db();
   
-  const stores: Array<keyof VitaKOfflineDB> = [
+  const tx = db.transaction([
     'meal_logs',
     'foods',
     'user_settings',
     'meal_presets',
     'sync_queue'
-  ];
-  
-  const tx = db.transaction(stores, 'readwrite');
+  ] as const, 'readwrite');
   
   await Promise.all([
     tx.objectStore('meal_logs').clear(),
