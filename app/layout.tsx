@@ -25,6 +25,12 @@ export const metadata: Metadata = {
     telephone: false,
   },
   manifest: "/manifest.json",
+  alternates: {
+    canonical: "/",
+    types: {
+      "application/rss+xml": "/blog/rss.xml",
+    },
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

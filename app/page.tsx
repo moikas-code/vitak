@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Footer } from "@/components/ui/footer";
-import { Activity, Apple, Shield, TrendingUp } from "lucide-react";
+import { Activity, Apple, Shield, TrendingUp, Download } from "lucide-react";
 import { WebApplicationLD, MedicalWebPageLD, OrganizationLD, FAQLD } from "@/components/seo/json-ld";
 
 export default function HomePage() {
@@ -136,6 +136,23 @@ export default function HomePage() {
               </CardContent>
             </Card>
           </div>
+        </section>
+
+        <section className="mb-16 text-center bg-primary/5 rounded-lg p-8">
+          <Download className="h-12 w-12 text-primary mx-auto mb-4" />
+          <h3 className="text-2xl font-bold mb-4">
+            Take VitaK Tracker Anywhere
+          </h3>
+          <p className="text-lg text-gray-600 mb-6 max-w-2xl mx-auto">
+            Install our app on your phone or computer for offline access, 
+            faster loading, and convenient home screen access.
+          </p>
+          <Link href="/install">
+            <Button size="lg" variant="outline">
+              <Download className="mr-2 h-5 w-5" />
+              Install App
+            </Button>
+          </Link>
         </section>
 
         <section className="bg-gray-100 rounded-lg p-8 text-center">

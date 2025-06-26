@@ -49,12 +49,27 @@ export function Footer() {
                   INR Management Tips
                 </Link>
               </li>
+              <li>
+                <Link href="/install" className="text-gray-600 hover:text-gray-900 transition-colors">
+                  Install App
+                </Link>
+              </li>
+              <li>
+                <Link href="/blog" className="text-gray-600 hover:text-gray-900 transition-colors">
+                  Blog
+                </Link>
+              </li>
             </ul>
           </div>
           
           <div>
             <h4 className="text-md font-semibold text-gray-900 mb-4">Support</h4>
             <ul className="space-y-2 text-sm">
+              <li>
+                <Link href="/faq" className="text-gray-600 hover:text-gray-900 transition-colors">
+                  FAQ
+                </Link>
+              </li>
               <li>
                 <span className="text-gray-600">
                   Use the feedback form in the app
