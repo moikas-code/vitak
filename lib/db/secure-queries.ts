@@ -70,11 +70,11 @@ export const secureQueries = {
         .select("*, food:foods(*)")
         .eq("user_id", userId);
 
-      if (filters?.startDate) {
-        query = query.gte("logged_at", filters.startDate);
+      if (filters?.start_date) {
+        query = query.gte("logged_at", filters.start_date.toISOString());
       }
-      if (filters?.endDate) {
-        query = query.lte("logged_at", filters.endDate);
+      if (filters?.end_date) {
+        query = query.lte("logged_at", filters.end_date.toISOString());
       }
 
       return query.order("logged_at", { ascending: false });
