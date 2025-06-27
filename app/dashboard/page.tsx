@@ -31,12 +31,19 @@ export default function DashboardPage() {
         <p className="text-gray-600 mt-1">
           Track your Vitamin K intake and stay within your limits
         </p>
-        {!is_online && (
-          <div className="flex items-center justify-between mt-2">
+        <div className="flex items-center justify-between mt-2">
+          {!is_online ? (
             <div className="flex items-center gap-2 text-amber-600">
               <WifiOff className="h-4 w-4" />
               <span className="text-sm">Offline mode{unsynced_count > 0 && ` • ${unsynced_count} changes pending sync`}</span>
             </div>
+          ) : (
+            <div className="flex items-center gap-2 text-green-600">
+              <RefreshCw className="h-4 w-4" />
+              <span className="text-sm">Online{unsynced_count > 0 && ` • ${unsynced_count} changes to sync`}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
             {unsynced_count > 0 && (
               <Button
                 size="sm"
@@ -51,11 +58,22 @@ export default function DashboardPage() {
                 className="h-7 text-xs"
               >
                 <RefreshCw className="h-3 w-3 mr-1" />
-                Try Sync
+                Sync Now
               </Button>
             )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                window.location.reload();
+              }}
+              className="h-7 text-xs"
+            >
+              <RefreshCw className="h-3 w-3 mr-1" />
+              Refresh
+            </Button>
           </div>
-        )}
+        </div>
         {is_syncing && (
           <div className="flex items-center gap-2 mt-2 text-blue-600">
             <Loader2 className="h-4 w-4 animate-spin" />

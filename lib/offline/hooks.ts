@@ -6,7 +6,7 @@ import { SyncManager } from './sync-manager';
 import { generate_encryption_key, store_encryption_key } from './encryption';
 import { init_offline_database } from './database';
 import { TokenStorageService } from './token-storage';
-import type { MealLog, Food, UserSettings, MealLogWithFood } from '@/lib/types';
+import type { MealLog, Food, UserSettings, MealLogWithFood, MealPreset, MealPresetWithFood } from '@/lib/types';
 
 // Initialize offline services when user is logged in
 export function useOfflineInit() {
@@ -61,8 +61,10 @@ export function useOfflineMealLogs() {
   
   // Try to get from server first, fallback to local
   const server_query = api.mealLog.getToday.useQuery(undefined, {
-    enabled: typeof window !== 'undefined' && navigator.onLine && !!user,
+    enabled: !!user,
     retry: false,
+    staleTime: 0, // Always fetch fresh data when online
+    refetchOnWindowFocus: true,
   });
   
   useEffect(() => {
@@ -76,24 +78,27 @@ export function useOfflineMealLogs() {
     if (!user) return;
     
     try {
-      if (typeof window !== 'undefined' && navigator.onLine && server_query.data) {
+      // Always try to use server data if available
+      if (server_query.data && !server_query.isError) {
         setMealLogs(server_query.data);
-      } else {
-        // Load from local storage
-        const local_logs = await storage.getMealLogs(user.id);
-        
-        // Enrich with food data
-        const cached_foods = await storage.getCachedFoods();
-        const enriched_logs = local_logs.map(log => {
-          const food = cached_foods.find(f => f.id === log.food_id);
-          return {
-            ...log,
-            food: food || null
-          } as MealLogWithFood;
-        });
-        
-        setMealLogs(enriched_logs);
+        setIsLoading(false);
+        return;
       }
+      
+      // Only use local storage if server query failed or no data yet
+      const local_logs = await storage.getMealLogs(user.id);
+      
+      // Enrich with food data
+      const cached_foods = await storage.getCachedFoods();
+      const enriched_logs = local_logs.map(log => {
+        const food = cached_foods.find(f => f.id === log.food_id);
+        return {
+          ...log,
+          food: food || null
+        } as MealLogWithFood;
+      });
+      
+      setMealLogs(enriched_logs);
     } catch (error) {
       console.error('Failed to load meal logs:', error);
     } finally {
@@ -169,8 +174,9 @@ export function useOfflineFoodSearch(search: string) {
   const server_query = api.food.search.useQuery(
     { query: search },
     {
-      enabled: typeof window !== 'undefined' && navigator.onLine && search.length > 0,
+      enabled: search.length > 0,
       retry: false,
+      staleTime: 0,
     }
   );
   
@@ -188,7 +194,8 @@ export function useOfflineFoodSearch(search: string) {
     setIsLoading(true);
     
     try {
-      if (typeof window !== 'undefined' && navigator.onLine && server_query.data) {
+      // Always try to use server data if available
+      if (server_query.data && !server_query.isError) {
         setFoods(server_query.data);
         
         // Cache the results
@@ -221,8 +228,9 @@ export function useOfflineUserSettings() {
   const storage = OfflineStorageService.getInstance();
   
   const server_query = api.user.getSettings.useQuery(undefined, {
-    enabled: typeof window !== 'undefined' && navigator.onLine && !!user,
+    enabled: !!user,
     retry: false,
+    staleTime: 0,
   });
   
   useEffect(() => {
@@ -236,7 +244,8 @@ export function useOfflineUserSettings() {
     if (!user) return;
     
     try {
-      if (typeof window !== 'undefined' && navigator.onLine && server_query.data) {
+      // Always try to use server data if available
+      if (server_query.data && !server_query.isError) {
         setSettings(server_query.data);
         
         // Cache the settings
@@ -277,28 +286,78 @@ export function useOfflineUserSettings() {
   };
 }
 
-// Connection status hook
+// Connection status hook with real connectivity check
 export function useConnectionStatus() {
   const [is_online, setIsOnline] = useState(typeof window !== 'undefined' ? navigator.onLine : true);
+  const [has_internet, setHasInternet] = useState(true);
   const [sync_status, setSyncStatus] = useState({
     is_syncing: false,
     unsynced_count: 0,
   });
   
+  // Test actual internet connectivity
+  const testConnectivity = async () => {
+    if (!navigator.onLine) {
+      setIsOnline(false);
+      setHasInternet(false);
+      return false;
+    }
+    
+    try {
+      // Try to fetch a small resource with a timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      
+      const response = await fetch('/api/trpc/user.getSettings?batch=1', {
+        method: 'HEAD',
+        signal: controller.signal,
+        cache: 'no-store',
+      });
+      
+      clearTimeout(timeoutId);
+      const connected = response.ok || response.status === 401; // 401 means connected but not authenticated
+      setHasInternet(connected);
+      return connected;
+    } catch {
+      setHasInternet(false);
+      return false;
+    }
+  };
+  
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
+    const handleOnline = async () => {
+      setIsOnline(true);
+      // Test actual connectivity when browser says we're online
+      const connected = await testConnectivity();
+      if (connected) {
+        // Trigger immediate sync when truly online
+        SyncManager.getInstance().forceSync();
+      }
+    };
+    
+    const handleOffline = () => {
+      setIsOnline(false);
+      setHasInternet(false);
+    };
     
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     
-    // Check sync status periodically
+    // Initial connectivity test
+    testConnectivity();
+    
+    // Check sync status and connectivity periodically
     const interval = setInterval(async () => {
       const status = await SyncManager.getInstance().getSyncStatus();
       setSyncStatus({
         is_syncing: status.is_syncing,
         unsynced_count: status.unsynced_count,
       });
+      
+      // Also test connectivity periodically
+      if (navigator.onLine) {
+        await testConnectivity();
+      }
     }, 5000);
     
     return () => {
@@ -309,7 +368,9 @@ export function useConnectionStatus() {
   }, []);
   
   return {
-    is_online,
+    is_online: is_online && has_internet,
+    is_browser_online: is_online,
+    has_internet,
     is_syncing: sync_status.is_syncing,
     unsynced_count: sync_status.unsynced_count,
   };
@@ -342,4 +403,154 @@ export function useTokenRefresh() {
     
     return () => clearInterval(interval);
   }, [getToken, isSignedIn]);
+}
+
+// Offline-aware meal presets hook
+export function useOfflineMealPresets() {
+  const { user } = useUser();
+  const [meal_presets, setMealPresets] = useState<MealPresetWithFood[]>([]);
+  const [is_loading, setIsLoading] = useState(true);
+  const storage = OfflineStorageService.getInstance();
+  
+  // Try to get from server first, fallback to local
+  const server_query = api.mealPreset.getAll.useQuery(undefined, {
+    enabled: !!user,
+    retry: false,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+  });
+  
+  useEffect(() => {
+    if (user) {
+      loadMealPresets();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, server_query.data]);
+  
+  async function loadMealPresets() {
+    if (!user) return;
+    
+    try {
+      // Always try to use server data if available
+      if (server_query.data && !server_query.isError) {
+        setMealPresets(server_query.data);
+        
+        // Cache the presets for offline use
+        for (const preset of server_query.data) {
+          await storage.saveMealPreset(preset);
+        }
+        setIsLoading(false);
+        return;
+      }
+      
+      // Only use local storage if server query failed or no data yet
+      const local_presets = await storage.getMealPresets(user.id);
+      
+      // Enrich with food data
+      const cached_foods = await storage.getCachedFoods();
+      const enriched_presets = local_presets.map(preset => {
+        const food = cached_foods.find(f => f.id === preset.food_id);
+        return {
+          ...preset,
+          food: food || null
+        } as MealPresetWithFood;
+      });
+      
+      setMealPresets(enriched_presets);
+    } catch (error) {
+      console.error('Failed to load meal presets:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+  
+  const addMealPreset = async (preset: Omit<MealPreset, 'id' | 'created_at' | 'updated_at' | 'usage_count' | 'user_id'>) => {
+    if (!user) return;
+    
+    const new_preset: MealPreset = {
+      ...preset,
+      id: `local_${Date.now()}_${Math.random()}`,
+      user_id: user.id,
+      usage_count: 0,
+      created_at: new Date(),
+      updated_at: new Date(),
+    };
+    
+    // Add to local storage
+    await storage.saveMealPreset(new_preset);
+    
+    // Update UI immediately with food data
+    const foods = await storage.getCachedFoods();
+    const food = foods.find(f => f.id === new_preset.food_id);
+    const enriched_preset: MealPresetWithFood = {
+      ...new_preset,
+      food: food || null
+    };
+    setMealPresets(prev => [...prev, enriched_preset]);
+    
+    // Try to sync if online
+    if (typeof window !== 'undefined' && navigator.onLine) {
+      SyncManager.getInstance().forceSync();
+    }
+  };
+  
+  const deleteMealPreset = async (id: string) => {
+    await storage.deleteMealPreset(id);
+    setMealPresets(prev => prev.filter(preset => preset.id !== id));
+    
+    if (typeof window !== 'undefined' && navigator.onLine) {
+      SyncManager.getInstance().forceSync();
+    }
+  };
+  
+  const logFromPreset = async (preset_id: string) => {
+    const preset = meal_presets.find(p => p.id === preset_id);
+    if (!preset || !user) return;
+    
+    // Get the food details
+    const foods = await storage.getCachedFoods();
+    const food = foods.find(f => f.id === preset.food_id);
+    
+    if (!food) {
+      throw new Error('Food not found in cache');
+    }
+    
+    // Calculate vitamin K
+    const vitamin_k_consumed_mcg = (food.vitamin_k_mcg_per_100g * preset.portion_size_g) / 100;
+    
+    // Create meal log
+    const new_log: MealLog = {
+      id: `local_${Date.now()}_${Math.random()}`,
+      user_id: user.id,
+      food_id: preset.food_id,
+      portion_size_g: preset.portion_size_g,
+      vitamin_k_consumed_mcg,
+      logged_at: new Date(),
+      created_at: new Date(),
+    };
+    
+    // Add meal log
+    await storage.addMealLog(new_log, user.id);
+    
+    // Update preset usage count locally
+    const updated_preset = { ...preset, usage_count: preset.usage_count + 1 };
+    await storage.saveMealPreset(updated_preset);
+    setMealPresets(prev => prev.map(p => p.id === preset_id ? updated_preset : p));
+    
+    // Sync if online
+    if (typeof window !== 'undefined' && navigator.onLine) {
+      SyncManager.getInstance().forceSync();
+    }
+    
+    return new_log;
+  };
+  
+  return {
+    meal_presets,
+    is_loading,
+    addMealPreset,
+    deleteMealPreset,
+    logFromPreset,
+    refetch: loadMealPresets,
+  };
 }

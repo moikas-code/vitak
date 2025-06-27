@@ -26,6 +26,8 @@ export class SyncManager {
     window.addEventListener('online', () => {
       console.log('Connection restored, starting sync...');
       this.startSync();
+      // Immediately sync when coming back online
+      setTimeout(() => this.sync(), 1000); // Small delay to ensure connection is stable
     });
     
     window.addEventListener('offline', () => {

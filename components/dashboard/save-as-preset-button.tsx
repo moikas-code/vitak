@@ -13,10 +13,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { api } from "@/lib/trpc/provider";
 import { useToast } from "@/lib/hooks/use-toast";
 import { Bookmark, Loader2 } from "lucide-react";
 import type { Food } from "@/lib/types";
+import { useOfflineMealPresets } from "@/lib/offline/hooks";
 
 interface SaveAsPresetButtonProps {
   food: Food;
@@ -28,29 +28,11 @@ export function SaveAsPresetButton({ food, portion_size_g, onSuccess }: SaveAsPr
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [preset_name, setPresetName] = useState("");
+  const [is_saving, setIsSaving] = useState(false);
   
-  const utils = api.useUtils();
-  const createPreset = api.mealPreset.create.useMutation({
-    onSuccess: () => {
-      toast({
-        title: "Preset saved",
-        description: "Your meal preset has been saved successfully.",
-      });
-      setOpen(false);
-      setPresetName("");
-      utils.mealPreset.getAll.invalidate();
-      onSuccess?.();
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save preset. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
+  const { addMealPreset } = useOfflineMealPresets();
 
-  const handle_save = () => {
+  const handle_save = async () => {
     if (!preset_name.trim()) {
       toast({
         title: "Error",
@@ -60,11 +42,33 @@ export function SaveAsPresetButton({ food, portion_size_g, onSuccess }: SaveAsPr
       return;
     }
 
-    createPreset.mutate({
-      name: preset_name.trim(),
-      food_id: food.id,
-      portion_size_g,
-    });
+    setIsSaving(true);
+    try {
+      const vitamin_k_mcg = (portion_size_g / 100) * food.vitamin_k_mcg_per_100g;
+      
+      await addMealPreset({
+        name: preset_name.trim(),
+        food_id: food.id,
+        portion_size_g,
+        vitamin_k_mcg,
+      });
+      
+      toast({
+        title: "Preset saved",
+        description: "Your meal preset has been saved successfully.",
+      });
+      setOpen(false);
+      setPresetName("");
+      onSuccess?.();
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to save preset. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const vitamin_k_amount = (portion_size_g / 100) * food.vitamin_k_mcg_per_100g;
@@ -109,15 +113,15 @@ export function SaveAsPresetButton({ food, portion_size_g, onSuccess }: SaveAsPr
           <Button
             variant="outline"
             onClick={() => setOpen(false)}
-            disabled={createPreset.isPending}
+            disabled={is_saving}
           >
             Cancel
           </Button>
           <Button
             onClick={handle_save}
-            disabled={createPreset.isPending || !preset_name.trim()}
+            disabled={is_saving || !preset_name.trim()}
           >
-            {createPreset.isPending && (
+            {is_saving && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
             Save Preset

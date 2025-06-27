@@ -127,7 +127,7 @@ const withPWA = require('next-pwa')({
         }
       }
     },
-    // Handle tRPC API routes
+    // Handle tRPC API routes with better offline support
     {
       urlPattern: ({ url }) => {
         return url.pathname.startsWith('/api/trpc/');
@@ -137,11 +137,14 @@ const withPWA = require('next-pwa')({
         cacheName: 'trpc-api',
         expiration: {
           maxEntries: 50,
-          maxAgeSeconds: 5 * 60 // 5 minutes
+          maxAgeSeconds: 60 // 1 minute for fresher data
         },
-        networkTimeoutSeconds: 10,
+        networkTimeoutSeconds: 3, // Reduced from 10s to 3s for faster fallback
         cacheableResponse: {
           statuses: [0, 200]
+        },
+        matchOptions: {
+          ignoreSearch: true // Ignore query parameters for better cache hits
         }
       }
     },

@@ -2,9 +2,9 @@
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { api } from "@/lib/trpc/provider";
 import { useToast } from "@/lib/hooks/use-toast";
-import { Trash2, Plus, Loader2, Bookmark } from "lucide-react";
+import { Trash2, Plus, Loader2, Bookmark, WifiOff } from "lucide-react";
+import { useOfflineMealPresets, useConnectionStatus } from "@/lib/offline/hooks";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,29 +23,30 @@ export function MealPresets() {
   const [delete_preset_id, setDeletePresetId] = useState<string | null>(null);
   const [adding_preset_id, setAddingPresetId] = useState<string | null>(null);
   
-  const { data: presets, isLoading } = api.mealPreset.getAll.useQuery();
-  const utils = api.useUtils();
+  const { meal_presets: presets, is_loading: isLoading, deleteMealPreset, logFromPreset } = useOfflineMealPresets();
+  const { is_online } = useConnectionStatus();
   
-  const deletePreset = api.mealPreset.delete.useMutation({
-    onSuccess: () => {
+  const handle_delete_preset = async (preset_id: string) => {
+    try {
+      await deleteMealPreset(preset_id);
       toast({
         title: "Preset deleted",
         description: "The preset has been removed.",
       });
-      utils.mealPreset.getAll.invalidate();
-    },
-    onError: () => {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to delete preset. Please try again.",
         variant: "destructive",
       });
-    },
-  });
+    }
+  };
 
-  const logFromPreset = api.mealPreset.logFromPreset.useMutation({
-    onSuccess: (_, variables) => {
-      const preset = presets?.find(p => p.id === variables);
+  const handle_log_preset = async (preset_id: string) => {
+    setAddingPresetId(preset_id);
+    try {
+      await logFromPreset(preset_id);
+      const preset = presets?.find(p => p.id === preset_id);
       if (preset) {
         track_meal_event('saved', {
           food_category: preset.food?.category,
@@ -56,24 +57,15 @@ export function MealPresets() {
         title: "Meal logged",
         description: "Your meal has been added from the preset.",
       });
-      setAddingPresetId(null);
-      utils.mealLog.getToday.invalidate();
-      utils.credit.getAllBalances.invalidate();
-      utils.mealPreset.getAll.invalidate(); // To update usage count
-    },
-    onError: () => {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to log meal from preset. Please try again.",
         variant: "destructive",
       });
+    } finally {
       setAddingPresetId(null);
-    },
-  });
-
-  const handle_log_preset = (preset_id: string) => {
-    setAddingPresetId(preset_id);
-    logFromPreset.mutate(preset_id);
+    }
   };
 
   const get_vitamin_k_color = (mcg: number) => {
@@ -97,6 +89,12 @@ export function MealPresets() {
         <p className="mt-2 text-sm text-muted-foreground">
           No meal presets yet. Save your favorite meal combinations for quick access!
         </p>
+        {!is_online && (
+          <div className="flex items-center justify-center gap-2 mt-2 text-amber-600">
+            <WifiOff className="h-4 w-4" />
+            <span className="text-xs">Offline mode</span>
+          </div>
+        )}
       </div>
     );
   }
@@ -162,9 +160,9 @@ export function MealPresets() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
+              onClick={async () => {
                 if (delete_preset_id) {
-                  deletePreset.mutate(delete_preset_id);
+                  await handle_delete_preset(delete_preset_id);
                   setDeletePresetId(null);
                 }
               }}
