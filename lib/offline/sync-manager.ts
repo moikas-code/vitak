@@ -329,9 +329,17 @@ export class SyncManager {
         }
         
         const result = await response.json();
+        console.log('[Sync] Create meal preset response:', result);
         
-        // Update local preset with server ID
-        await this.storage.updateMealPresetWithServerId(meal_preset.id, result.id);
+        // Extract the actual ID from the response
+        const serverData = result?.result?.data?.json;
+        if (serverData?.id) {
+          // Update local preset with server ID
+          await this.storage.updateMealPresetWithServerId(meal_preset.id, serverData.id);
+          console.log('[Sync] Updated local meal preset with server ID:', serverData.id);
+        } else {
+          console.warn('[Sync] No server ID in response:', result);
+        }
         
       } else if (item.operation === 'delete') {
         const response = await fetch('/api/trpc/mealPreset.delete', {
@@ -341,7 +349,9 @@ export class SyncManager {
             'Authorization': `Bearer ${token}`,
             'x-trpc-source': 'offline-sync',
           },
-          body: JSON.stringify(meal_preset.id),
+          body: JSON.stringify({
+            json: meal_preset.id
+          }),
         });
         
         if (!response.ok && response.status !== 404) {

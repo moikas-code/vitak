@@ -348,6 +348,11 @@ export class OfflineStorageService {
   }
   
   async updateMealPresetWithServerId(local_id: string, server_id: string): Promise<void> {
+    if (!server_id || typeof server_id !== 'string') {
+      console.error('[Storage] Invalid server ID for meal preset:', server_id);
+      throw new Error('Invalid server ID provided for meal preset update');
+    }
+    
     const db = await get_offline_db();
     const preset = await db.get('meal_presets', local_id);
     
@@ -357,13 +362,20 @@ export class OfflineStorageService {
       preset.is_synced = true;
       preset.last_modified = new Date();
       
-      // Delete the old record with local ID
-      await db.delete('meal_presets', local_id);
-      
-      // Add the updated record with server ID
-      await db.put('meal_presets', preset);
-      
-      console.log('[Storage] Updated meal preset with server ID:', server_id);
+      try {
+        // Delete the old record with local ID
+        await db.delete('meal_presets', local_id);
+        
+        // Add the updated record with server ID
+        await db.put('meal_presets', preset);
+        
+        console.log('[Storage] Updated meal preset with server ID:', server_id);
+      } catch (error) {
+        console.error('[Storage] Failed to update meal preset with server ID:', error);
+        throw new Error('Failed to update meal preset in IndexedDB');
+      }
+    } else {
+      console.warn('[Storage] Meal preset not found for update:', local_id);
     }
   }
   
