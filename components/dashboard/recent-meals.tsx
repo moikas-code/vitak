@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/lib/trpc/provider";
 import { useToast } from "@/lib/hooks/use-toast";
 import { Trash2 } from "lucide-react";
+import { useOfflineMealLogs, useConnectionStatus } from "@/lib/offline/hooks";
 import type { MealLogWithFood } from "@/lib/types";
 
 interface RecentMealsProps {
@@ -13,24 +14,34 @@ interface RecentMealsProps {
 export function RecentMeals({ meals }: RecentMealsProps) {
   const { toast } = useToast();
   const utils = api.useUtils();
+  const { deleteMealLog } = useOfflineMealLogs();
+  const { is_online } = useConnectionStatus();
   
-  const deleteMeal = api.mealLog.delete.useMutation({
-    onSuccess: () => {
+  const handleDeleteMeal = async (meal_id: string) => {
+    try {
+      await deleteMealLog(meal_id);
+      
       toast({
         title: "Meal removed",
-        description: "The meal has been removed from your log.",
+        description: is_online 
+          ? "The meal has been removed from your log."
+          : "Meal removed locally. Will sync when connection is restored.",
       });
-      utils.mealLog.getToday.invalidate();
-      utils.credit.getAllBalances.invalidate();
-    },
-    onError: () => {
+      
+      // Invalidate queries if online
+      if (is_online) {
+        utils.mealLog.getToday.invalidate();
+        utils.credit.getAllBalances.invalidate();
+      }
+    } catch (error) {
+      console.error('Failed to delete meal:', error);
       toast({
         title: "Error",
         description: "Failed to remove meal. Please try again.",
         variant: "destructive",
       });
-    },
-  });
+    }
+  };
 
   if (meals.length === 0) {
     return (
@@ -62,8 +73,7 @@ export function RecentMeals({ meals }: RecentMealsProps) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => deleteMeal.mutate(meal.id)}
-            disabled={deleteMeal.isPending}
+            onClick={() => handleDeleteMeal(meal.id)}
           >
             <Trash2 className="h-4 w-4" />
           </Button>

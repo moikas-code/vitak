@@ -150,6 +150,23 @@ export class SyncManager {
       
       if (item.operation === 'create') {
         console.log('[Sync] Creating meal log:', meal_log);
+        
+        const request_body = {
+          0: {
+            json: {
+              food_id: meal_log.food_id,
+              portion_size_g: meal_log.portion_size_g,
+            }
+          }
+        };
+        
+        console.log('[Sync] Request body:', JSON.stringify(request_body, null, 2));
+        console.log('[Sync] Request headers:', {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token.substring(0, 20)}...`,
+          'x-trpc-source': 'offline-sync',
+        });
+        
         const response = await fetch('/api/trpc/mealLog.add?batch=1', {
           method: 'POST',
           headers: {
@@ -157,20 +174,16 @@ export class SyncManager {
             'Authorization': `Bearer ${token}`,
             'x-trpc-source': 'offline-sync',
           },
-          body: JSON.stringify({
-            0: {
-              json: {
-                food_id: meal_log.food_id,
-                portion_size_g: meal_log.portion_size_g,
-              }
-            }
-          }),
+          body: JSON.stringify(request_body),
         });
+        
+        console.log('[Sync] Response status:', response.status, response.statusText);
         
         if (!response.ok) {
           const errorText = await response.text();
           console.error('[Sync] Failed to create meal log:', response.status, errorText);
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          console.error('[Sync] Response headers:', Object.fromEntries(response.headers.entries()));
+          throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
         }
         
         const result = await response.json();
@@ -391,9 +404,10 @@ export class SyncManager {
         // Check if token is expired
         const is_expired = await token_storage.isTokenExpired();
         if (!is_expired) {
+          console.log('[Sync] Using stored token');
           return stored_token;
         }
-        console.warn('Stored token is expired, attempting to refresh...');
+        console.warn('[Sync] Stored token is expired, attempting to refresh...');
       }
       
       // If no stored token or expired, try to get from Clerk (if available)
@@ -407,7 +421,7 @@ export class SyncManager {
             console.log('[Sync] Getting fresh token from Clerk...');
             const fresh_token = await Clerk.session.getToken();
             if (fresh_token) {
-              console.log('[Sync] Got fresh token from Clerk');
+              console.log('[Sync] Got fresh token from Clerk, length:', fresh_token.length);
               // Store the fresh token for future use
               await token_storage.storeToken(fresh_token);
               return fresh_token;
@@ -424,13 +438,13 @@ export class SyncManager {
       
       // Final fallback to stored token even if expired (better than nothing)
       if (stored_token) {
-        console.warn('Using expired token as last resort');
+        console.warn('[Sync] Using expired token as last resort, length:', stored_token.length);
         return stored_token;
       }
       
       throw new Error('No authentication token available');
     } catch (error) {
-      console.error('Failed to get auth token:', error);
+      console.error('[Sync] Failed to get auth token:', error);
       throw new Error('Authentication failed');
     }
   }
