@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 import { food_category_schema } from "@/lib/types";
-import { createServerSupabaseClient } from "@/lib/db/supabase-server";
+import { createSupabaseClientWithUser } from "@/lib/db/supabase-with-user";
 import { TRPCError } from "@trpc/server";
 
 export const foodRouter = createTRPCRouter({
@@ -16,8 +16,8 @@ export const foodRouter = createTRPCRouter({
         limit: z.number().min(1).max(50).default(20),
       })
     )
-    .query(async ({ ctx: _ctx, input }) => {
-      const supabase = await createServerSupabaseClient();
+    .query(async ({ ctx, input }) => {
+      const supabase = createSupabaseClientWithUser(ctx.session.userId);
       let query = supabase
         .from("foods")
         .select("*")
@@ -47,8 +47,8 @@ export const foodRouter = createTRPCRouter({
 
   getById: protectedProcedure
     .input(z.string())
-    .query(async ({ ctx: _ctx, input }) => {
-      const supabase = await createServerSupabaseClient();
+    .query(async ({ ctx, input }) => {
+      const supabase = createSupabaseClientWithUser(ctx.session.userId);
       const { data, error } = await supabase
         .from("foods")
         .select("*")
@@ -82,8 +82,8 @@ export const foodRouter = createTRPCRouter({
     ];
   }),
 
-  getCommonFoods: publicProcedure.query(async ({ ctx: _ctx }) => {
-    const supabase = await createServerSupabaseClient();
+  getCommonFoods: publicProcedure.query(async ({ ctx }) => {
+    const supabase = createSupabaseClientWithUser(ctx.session.userId || 'anonymous');
     
     // Get a larger selection of common foods from different categories
     // These are foods that users are likely to log frequently

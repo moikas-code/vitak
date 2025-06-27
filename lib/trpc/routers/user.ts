@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
-import { createServerSupabaseClient } from "@/lib/db/supabase-server";
+import { createSupabaseClientWithUser, createDefaultUserSettings } from "@/lib/db/supabase-with-user";
 
 export const userRouter = createTRPCRouter({
   getCurrentUser: protectedProcedure.query(async ({ ctx }) => {
-    const supabase = await createServerSupabaseClient();
+    const supabase = createSupabaseClientWithUser(ctx.session.userId);
     const { data, error } = await supabase
       .from("users")
       .select("*")
@@ -43,7 +43,7 @@ export const userRouter = createTRPCRouter({
       }
 
       // Use the database function to get or create user
-      const supabase = await createServerSupabaseClient();
+      const supabase = createSupabaseClientWithUser(ctx.session.userId);
       const { data, error } = await supabase.rpc("get_or_create_user", {
         p_clerk_user_id: input.clerk_user_id,
         p_email: input.email,
@@ -64,7 +64,7 @@ export const userRouter = createTRPCRouter({
     }),
 
   getSettings: protectedProcedure.query(async ({ ctx }) => {
-    const supabase = await createServerSupabaseClient();
+    const supabase = createSupabaseClientWithUser(ctx.session.userId);
     const { data, error } = await supabase
       .from("user_settings")
       .select("*")
@@ -72,6 +72,7 @@ export const userRouter = createTRPCRouter({
       .single();
 
     if (error && error.code !== "PGRST116") {
+      console.error('[User.getSettings] Error fetching settings:', error);
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: "Failed to fetch user settings",
@@ -80,29 +81,37 @@ export const userRouter = createTRPCRouter({
 
     // If no settings exist, create default ones
     if (!data) {
-      const { data: newSettings, error: insertError } = await supabase
-        .from("user_settings")
-        .insert({
-          user_id: ctx.session.userId,
-          daily_limit: 100,
-          weekly_limit: 700,
-          monthly_limit: 3000,
-          tracking_period: "daily",
-        })
-        .select()
-        .single();
-
-      if (insertError) {
+      console.log('[User.getSettings] No settings found, creating defaults for user:', ctx.session.userId);
+      
+      const newSettings = await createDefaultUserSettings(ctx.session.userId);
+      
+      if (!newSettings) {
+        console.error('[User.getSettings] Failed to create default settings for user:', ctx.session.userId);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to create user settings",
         });
       }
+      
+      // Fetch the full settings record to get all fields including timestamps
+      const { data: fullSettings, error: fetchError } = await supabase
+        .from("user_settings")
+        .select("*")
+        .eq("user_id", ctx.session.userId)
+        .single();
+        
+      if (fetchError || !fullSettings) {
+        console.error('[User.getSettings] Failed to fetch created settings:', fetchError);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to fetch created settings",
+        });
+      }
 
       return {
-        ...newSettings,
-        created_at: new Date(newSettings.created_at),
-        updated_at: new Date(newSettings.updated_at),
+        ...fullSettings,
+        created_at: new Date(fullSettings.created_at),
+        updated_at: new Date(fullSettings.updated_at),
       };
     }
 
@@ -123,7 +132,7 @@ export const userRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const supabase = await createServerSupabaseClient();
+      const supabase = createSupabaseClientWithUser(ctx.session.userId);
       const { data, error } = await supabase
         .from("user_settings")
         .update({

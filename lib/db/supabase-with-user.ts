@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { supabaseServiceRole } from "./supabase-server";
 
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
   throw new Error("Missing env.NEXT_PUBLIC_SUPABASE_URL");
@@ -33,4 +34,38 @@ export function createSupabaseClientWithUser(userId: string) {
   );
 
   return supabase;
+}
+
+/**
+ * Create default user settings using service role client
+ * This is only used when settings don't exist for a user
+ * @param userId - The Clerk user ID
+ * @returns The created settings or null if error
+ */
+export async function createDefaultUserSettings(userId: string) {
+  try {
+    const default_settings = {
+      user_id: userId,
+      daily_limit: 100,
+      weekly_limit: 700,
+      monthly_limit: 3000,
+      tracking_period: 'daily' as const,
+    };
+    
+    const { data, error } = await supabaseServiceRole
+      .from("user_settings")
+      .insert(default_settings)
+      .select("daily_limit, weekly_limit, monthly_limit")
+      .single();
+      
+    if (error) {
+      console.error('[createDefaultUserSettings] Error:', error);
+      return null;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('[createDefaultUserSettings] Unexpected error:', error);
+    return null;
+  }
 }

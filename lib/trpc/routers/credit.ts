@@ -1,6 +1,6 @@
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { vitamin_k_period_schema } from "@/lib/types";
-import { createSupabaseClientWithUser } from "@/lib/db/supabase-with-user";
+import { createSupabaseClientWithUser, createDefaultUserSettings } from "@/lib/db/supabase-with-user";
 import { TRPCError } from "@trpc/server";
 
 function get_period_dates(period: "daily" | "weekly" | "monthly") {
@@ -112,22 +112,11 @@ export const creditRouter = createTRPCRouter({
       if (settingsError.code === 'PGRST116') { // No rows returned
         console.log('[Credit] No user settings found, creating defaults for user:', ctx.session.userId);
         
-        const default_settings = {
-          user_id: ctx.session.userId,
-          daily_limit: 100,
-          weekly_limit: 700,
-          monthly_limit: 3000,
-          tracking_period: 'daily' as const,
-        };
+        // Use service role client to create default settings
+        const new_settings = await createDefaultUserSettings(ctx.session.userId);
         
-        const { data: new_settings, error: create_error } = await supabase
-          .from("user_settings")
-          .insert(default_settings)
-          .select("daily_limit, weekly_limit, monthly_limit")
-          .single();
-          
-        if (create_error) {
-          console.error('[Credit] Failed to create default settings:', create_error);
+        if (!new_settings) {
+          console.error('[Credit] Failed to create default settings for user:', ctx.session.userId);
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
             message: "Failed to create user settings",

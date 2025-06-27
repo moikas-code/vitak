@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
-import { createServerSupabaseClient } from "@/lib/db/supabase-server";
+import { createSupabaseClientWithUser } from "@/lib/db/supabase-with-user";
 import { TRPCError } from "@trpc/server";
 import { checkRateLimit, RATE_LIMITS, RateLimitError } from "@/lib/security/rate-limit-redis";
 
@@ -26,7 +26,7 @@ export const mealLogRouter = createTRPCRouter({
         throw error;
       }
 
-      const supabase = await createServerSupabaseClient();
+      const supabase = createSupabaseClientWithUser(ctx.session.userId);
       
       // First, get the food details to calculate vitamin K
       const { data: food, error: foodError } = await supabase
@@ -36,6 +36,7 @@ export const mealLogRouter = createTRPCRouter({
         .single();
 
       if (foodError) {
+        console.error('[MealLog.add] Food lookup error:', foodError);
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Food not found",
@@ -58,6 +59,7 @@ export const mealLogRouter = createTRPCRouter({
         .single();
 
       if (error) {
+        console.error('[MealLog.add] Insert error:', error);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to log meal",
@@ -85,7 +87,7 @@ export const mealLogRouter = createTRPCRouter({
       throw error;
     }
 
-    const supabase = await createServerSupabaseClient();
+    const supabase = createSupabaseClientWithUser(ctx.session.userId);
     
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -123,7 +125,7 @@ export const mealLogRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
-      const supabase = await createServerSupabaseClient();
+      const supabase = createSupabaseClientWithUser(ctx.session.userId);
       const { data, error } = await supabase
         .from("meal_logs")
         .select("*, food:foods(*)")
@@ -149,7 +151,7 @@ export const mealLogRouter = createTRPCRouter({
   delete: protectedProcedure
     .input(z.string())
     .mutation(async ({ ctx, input }) => {
-      const supabase = await createServerSupabaseClient();
+      const supabase = createSupabaseClientWithUser(ctx.session.userId);
       // First verify the meal belongs to the user
       const { data: mealLog, error: fetchError } = await supabase
         .from("meal_logs")
