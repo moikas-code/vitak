@@ -5,7 +5,7 @@ import { OfflineStorageService } from './storage-service';
 import { SyncManager } from './sync-manager';
 import { generate_encryption_key, store_encryption_key } from './encryption';
 import { init_offline_database } from './database';
-import type { MealLog, Food, UserSettings } from '@/lib/types';
+import type { MealLog, Food, UserSettings, MealLogWithFood } from '@/lib/types';
 
 // Initialize offline services when user is logged in
 export function useOfflineInit() {
@@ -43,7 +43,7 @@ async function initializeOfflineServices(user_id: string) {
 // Offline-aware meal log hooks
 export function useOfflineMealLogs() {
   const { user } = useUser();
-  const [meal_logs, setMealLogs] = useState<MealLog[]>([]);
+  const [meal_logs, setMealLogs] = useState<MealLogWithFood[]>([]);
   const [is_loading, setIsLoading] = useState(true);
   const storage = OfflineStorageService.getInstance();
   
@@ -69,7 +69,18 @@ export function useOfflineMealLogs() {
       } else {
         // Load from local storage
         const local_logs = await storage.getMealLogs(user.id);
-        setMealLogs(local_logs);
+        
+        // Enrich with food data
+        const cached_foods = await storage.getCachedFoods();
+        const enriched_logs = local_logs.map(log => {
+          const food = cached_foods.find(f => f.id === log.food_id);
+          return {
+            ...log,
+            food: food || null
+          } as MealLogWithFood;
+        });
+        
+        setMealLogs(enriched_logs);
       }
     } catch (error) {
       console.error('Failed to load meal logs:', error);
@@ -105,8 +116,12 @@ export function useOfflineMealLogs() {
     // Add to local storage
     await storage.addMealLog(new_log, user.id);
     
-    // Update UI immediately
-    setMealLogs(prev => [new_log, ...prev]);
+    // Update UI immediately with food data
+    const enriched_log: MealLogWithFood = {
+      ...new_log,
+      food
+    };
+    setMealLogs(prev => [enriched_log, ...prev]);
     
     // Try to sync if online
     if (typeof window !== 'undefined' && navigator.onLine) {

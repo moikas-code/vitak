@@ -8,10 +8,16 @@ import { QuickAdd } from "@/components/dashboard/quick-add";
 import { MealPresets } from "@/components/dashboard/meal-presets";
 import { api } from "@/lib/trpc/provider";
 import { track_dashboard_event } from "@/lib/analytics";
+import { useOfflineMealLogs, useOfflineInit, useConnectionStatus } from "@/lib/offline/hooks";
+import { WifiOff, Loader2, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { SyncManager } from "@/lib/offline/sync-manager";
 
 export default function DashboardPage() {
   const { data: balances } = api.credit.getAllBalances.useQuery();
-  const { data: todayMeals } = api.mealLog.getToday.useQuery();
+  useOfflineInit(); // Initialize offline services
+  const { meal_logs: todayMeals, is_loading } = useOfflineMealLogs();
+  const { is_online, is_syncing, unsynced_count } = useConnectionStatus();
 
   useEffect(() => {
     track_dashboard_event('dashboard');
@@ -24,6 +30,31 @@ export default function DashboardPage() {
         <p className="text-gray-600 mt-1">
           Track your Vitamin K intake and stay within your limits
         </p>
+        {!is_online && (
+          <div className="flex items-center justify-between mt-2">
+            <div className="flex items-center gap-2 text-amber-600">
+              <WifiOff className="h-4 w-4" />
+              <span className="text-sm">Offline mode{unsynced_count > 0 && ` • ${unsynced_count} changes pending sync`}</span>
+            </div>
+            {unsynced_count > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => SyncManager.getInstance().forceSync()}
+                className="h-7 text-xs"
+              >
+                <RefreshCw className="h-3 w-3 mr-1" />
+                Try Sync
+              </Button>
+            )}
+          </div>
+        )}
+        {is_syncing && (
+          <div className="flex items-center gap-2 mt-2 text-blue-600">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm">Syncing changes...</span>
+          </div>
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -84,7 +115,13 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <RecentMeals meals={todayMeals || []} />
+            {is_loading && !todayMeals ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              </div>
+            ) : (
+              <RecentMeals meals={todayMeals || []} />
+            )}
           </CardContent>
         </Card>
       </div>

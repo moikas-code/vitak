@@ -129,8 +129,14 @@ export class SyncManager {
             'x-trpc-source': 'offline-sync',
           },
           body: JSON.stringify({
-            food_id: meal_log.food_id,
-            portion_size_g: meal_log.portion_size_g,
+            batch: [{
+              0: {
+                json: {
+                  food_id: meal_log.food_id,
+                  portion_size_g: meal_log.portion_size_g,
+                }
+              }
+            }]
           }),
         });
         
@@ -151,7 +157,13 @@ export class SyncManager {
             'Authorization': `Bearer ${token}`,
             'x-trpc-source': 'offline-sync',
           },
-          body: JSON.stringify(meal_log.id),
+          body: JSON.stringify({
+            batch: [{
+              0: {
+                json: meal_log.id
+              }
+            }]
+          }),
         });
         
         if (!response.ok && response.status !== 404) {
@@ -187,10 +199,16 @@ export class SyncManager {
             'x-trpc-source': 'offline-sync',
           },
           body: JSON.stringify({
-            daily_limit: user_settings.daily_limit,
-            weekly_limit: user_settings.weekly_limit,
-            monthly_limit: user_settings.monthly_limit,
-            tracking_period: user_settings.tracking_period,
+            batch: [{
+              0: {
+                json: {
+                  daily_limit: user_settings.daily_limit,
+                  weekly_limit: user_settings.weekly_limit,
+                  monthly_limit: user_settings.monthly_limit,
+                  tracking_period: user_settings.tracking_period,
+                }
+              }
+            }]
           }),
         });
         
@@ -266,7 +284,7 @@ export class SyncManager {
       const token = await this.getAuthToken();
       
       // Pull today's meal logs
-      const meal_logs_response = await fetch('/api/trpc/mealLog.getToday', {
+      const meal_logs_response = await fetch('/api/trpc/mealLog.getToday?batch=1&input=' + encodeURIComponent(JSON.stringify({0:{json:{}}})), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -275,7 +293,8 @@ export class SyncManager {
       });
       
       if (meal_logs_response.ok) {
-        const meal_logs = await meal_logs_response.json();
+        const response_data = await meal_logs_response.json();
+        const meal_logs = response_data?.[0]?.result?.data?.json || [];
         
         // Update local storage with server data
         for (const log of meal_logs) {
@@ -284,7 +303,7 @@ export class SyncManager {
       }
       
       // Pull user settings
-      const settings_response = await fetch('/api/trpc/user.getSettings', {
+      const settings_response = await fetch('/api/trpc/user.getSettings?batch=1&input=' + encodeURIComponent(JSON.stringify({0:{json:{}}})), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -293,8 +312,11 @@ export class SyncManager {
       });
       
       if (settings_response.ok) {
-        const settings = await settings_response.json();
-        await this.storage.updateUserSettingsFromServer(settings);
+        const response_data = await settings_response.json();
+        const settings = response_data?.[0]?.result?.data?.json;
+        if (settings) {
+          await this.storage.updateUserSettingsFromServer(settings);
+        }
       }
       
     } catch (error) {
@@ -306,17 +328,18 @@ export class SyncManager {
   private async getAuthToken(): Promise<string> {
     try {
       if (typeof window !== 'undefined') {
-        // Use dynamic import to avoid SSR issues
-        await import('@clerk/nextjs');
+        // Dynamically import Clerk to avoid SSR issues
+        const { Clerk } = window as Window & { Clerk?: { session?: { getToken: () => Promise<string> } } };
         
-        // For offline sync, we need to get the token differently
-        // This is a simplified approach - in a real app you might store the token
-        const storedToken = localStorage.getItem('clerk-token');
-        if (storedToken) {
-          return storedToken;
+        if (Clerk && Clerk.session) {
+          // Get the session token from Clerk
+          const token = await Clerk.session.getToken();
+          if (token) {
+            return token;
+          }
         }
         
-        throw new Error('No stored authentication token available');
+        throw new Error('No authentication token available');
       }
       throw new Error('Window not available');
     } catch (error) {

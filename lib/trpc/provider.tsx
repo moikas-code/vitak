@@ -108,18 +108,8 @@ export function TRPCProvider(props: { children: React.ReactNode }) {
             const headers = new Headers();
             headers.set("x-trpc-source", "nextjs-react");
             
-            // Add authentication headers for Clerk
-            if (typeof window !== 'undefined') {
-              try {
-                // For client-side, we can access the token from Clerk's session storage
-                const storedToken = localStorage.getItem('clerk-token');
-                if (storedToken) {
-                  headers.set('Authorization', `Bearer ${storedToken}`);
-                }
-              } catch (error) {
-                console.warn('Failed to get auth token:', error);
-              }
-            }
+            // Authentication headers are handled by Clerk middleware on the server
+            // No need to manually add them here
             
             return headers;
           },
