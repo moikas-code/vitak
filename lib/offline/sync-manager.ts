@@ -335,7 +335,7 @@ export class SyncManager {
           console.error('[Sync] Failed to create meal preset:', response.status, errorText);
           
           // Check if it's a duplicate name error
-          if (response.status === 400 && errorText.includes('duplicate') || errorText.includes('23505')) {
+          if (response.status === 400 && (errorText.includes('already exists') || errorText.includes('duplicate') || errorText.includes('23505'))) {
             console.warn('[Sync] Preset with this name already exists, skipping sync');
             // Don't throw - just skip this preset
             return;
