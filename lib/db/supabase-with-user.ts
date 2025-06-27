@@ -33,14 +33,18 @@ export function createSupabaseClientWithUser(_userId: string) {
 
 /**
  * Create a Supabase client for public/unauthenticated operations
- * Uses service role key for database access without user context
- * @returns Supabase client with service role access
+ * Uses anon key for database access without user context
+ * @returns Supabase client with anon access
  */
 export function createPublicSupabaseClient() {
-  // Use service role key for public operations
+  if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    throw new Error("Missing env.NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  }
+  
+  // Use anon key for public operations
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       auth: {
         autoRefreshToken: false,

@@ -172,11 +172,9 @@ export class SyncManager {
         console.log('[Sync] Creating meal log:', meal_log);
         
         const request_body = {
-          0: {
-            json: {
-              food_id: meal_log.food_id,
-              portion_size_g: meal_log.portion_size_g,
-            }
+          json: {
+            food_id: meal_log.food_id,
+            portion_size_g: meal_log.portion_size_g,
           }
         };
         
@@ -187,7 +185,7 @@ export class SyncManager {
           'x-trpc-source': 'offline-sync',
         });
         
-        const response = await fetch('/api/trpc/mealLog.add?batch=1', {
+        const response = await fetch('/api/trpc/mealLog.add', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -209,8 +207,8 @@ export class SyncManager {
         const result = await response.json();
         console.log('[Sync] Create meal log response:', result);
         
-        // Extract the actual ID from the batch response
-        const serverData = result?.[0]?.result?.data?.json;
+        // Extract the actual ID from the response
+        const serverData = result?.result?.data?.json;
         if (serverData?.id) {
           // Update local meal log with server ID
           await this.storage.updateMealLogWithServerId(meal_log.id, serverData.id);
@@ -221,18 +219,21 @@ export class SyncManager {
         
       } else if (item.operation === 'delete') {
         console.log('[Sync] Deleting meal log:', meal_log.id);
-        const response = await fetch('/api/trpc/mealLog.delete?batch=1', {
+        
+        const request_body = {
+          json: meal_log.id
+        };
+        
+        console.log('[Sync] Delete request body:', JSON.stringify(request_body, null, 2));
+        
+        const response = await fetch('/api/trpc/mealLog.delete', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
             'x-trpc-source': 'offline-sync',
           },
-          body: JSON.stringify({
-            0: {
-              json: meal_log.id
-            }
-          }),
+          body: JSON.stringify(request_body),
         });
         
         if (!response.ok && response.status !== 404) {
@@ -264,7 +265,7 @@ export class SyncManager {
       
       if (item.operation === 'update') {
         console.log('[Sync] Updating user settings:', user_settings);
-        const response = await fetch('/api/trpc/user.updateSettings?batch=1', {
+        const response = await fetch('/api/trpc/user.updateSettings', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -272,13 +273,11 @@ export class SyncManager {
             'x-trpc-source': 'offline-sync',
           },
           body: JSON.stringify({
-            0: {
-              json: {
-                daily_limit: user_settings.daily_limit,
-                weekly_limit: user_settings.weekly_limit,
-                monthly_limit: user_settings.monthly_limit,
-                tracking_period: user_settings.tracking_period,
-              }
+            json: {
+              daily_limit: user_settings.daily_limit,
+              weekly_limit: user_settings.weekly_limit,
+              monthly_limit: user_settings.monthly_limit,
+              tracking_period: user_settings.tracking_period,
             }
           }),
         });
@@ -309,7 +308,7 @@ export class SyncManager {
       
       if (item.operation === 'create') {
         console.log('[Sync] Creating meal preset:', meal_preset);
-        const response = await fetch('/api/trpc/mealPreset.create?batch=1', {
+        const response = await fetch('/api/trpc/mealPreset.create', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -317,12 +316,10 @@ export class SyncManager {
             'x-trpc-source': 'offline-sync',
           },
           body: JSON.stringify({
-            0: {
-              json: {
-                name: meal_preset.name,
-                food_id: meal_preset.food_id,
-                portion_size_g: meal_preset.portion_size_g,
-              }
+            json: {
+              name: meal_preset.name,
+              food_id: meal_preset.food_id,
+              portion_size_g: meal_preset.portion_size_g,
             }
           }),
         });
@@ -364,7 +361,7 @@ export class SyncManager {
       
       // Pull today's meal logs
       console.log('[Sync] Pulling today\'s meal logs from server...');
-      const meal_logs_response = await fetch('/api/trpc/mealLog.getToday?batch=1&input=' + encodeURIComponent(JSON.stringify({0:{}})), {
+      const meal_logs_response = await fetch('/api/trpc/mealLog.getToday', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -375,7 +372,7 @@ export class SyncManager {
       if (meal_logs_response.ok) {
         const response_data = await meal_logs_response.json();
         console.log('[Sync] Meal logs response:', response_data);
-        const meal_logs = response_data?.[0]?.result?.data?.json || [];
+        const meal_logs = response_data?.result?.data?.json || [];
         console.log('[Sync] Found', meal_logs.length, 'meal logs from server');
         
         // Update local storage with server data
@@ -391,7 +388,7 @@ export class SyncManager {
       
       // Pull user settings
       console.log('[Sync] Pulling user settings from server...');
-      const settings_response = await fetch('/api/trpc/user.getSettings?batch=1&input=' + encodeURIComponent(JSON.stringify({0:{}})), {
+      const settings_response = await fetch('/api/trpc/user.getSettings', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -402,7 +399,7 @@ export class SyncManager {
       if (settings_response.ok) {
         const response_data = await settings_response.json();
         console.log('[Sync] Settings response:', response_data);
-        const settings = response_data?.[0]?.result?.data?.json;
+        const settings = response_data?.result?.data?.json;
         if (settings) {
           await this.storage.updateUserSettingsFromServer(settings);
           console.log('[Sync] Updated user settings from server');
