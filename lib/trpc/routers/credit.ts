@@ -1,6 +1,6 @@
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { vitamin_k_period_schema } from "@/lib/types";
-import { createServerSupabaseClient } from "@/lib/db/supabase-server";
+import { createSupabaseClientWithUser } from "@/lib/db/supabase-with-user";
 import { TRPCError } from "@trpc/server";
 
 function get_period_dates(period: "daily" | "weekly" | "monthly") {
@@ -39,8 +39,9 @@ export const creditRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const period = input ?? "daily";
       
-      // Get user settings
-      const supabase = await createServerSupabaseClient();
+      try {
+        // Get user settings using the user ID from session context
+        const supabase = createSupabaseClientWithUser(ctx.session.userId);
       const { data: settings, error: settingsError } = await supabase
         .from("user_settings")
         .select("daily_limit, weekly_limit, monthly_limit")
@@ -86,11 +87,18 @@ export const creditRouter = createTRPCRouter({
         period_start,
         period_end,
       };
+      } catch (error) {
+        console.error('[Credit.getCurrentBalance] Error:', error);
+        throw error;
+      }
     }),
 
   getAllBalances: protectedProcedure.query(async ({ ctx }) => {
-    // Get user settings
-    const supabase = await createServerSupabaseClient();
+    try {
+      console.log('[Credit.getAllBalances] Starting for user:', ctx.session.userId);
+      
+      // Get user settings using the user ID from session context
+      const supabase = createSupabaseClientWithUser(ctx.session.userId);
     const { data: initial_settings, error: settingsError } = await supabase
       .from("user_settings")
       .select("daily_limit, weekly_limit, monthly_limit")
@@ -189,10 +197,15 @@ export const creditRouter = createTRPCRouter({
       };
     }
 
+    console.log('[Credit.getAllBalances] Returning balances for user:', ctx.session.userId);
     return balances as {
       daily: typeof balances.daily;
       weekly: typeof balances.weekly;
       monthly: typeof balances.monthly;
     };
+    } catch (error) {
+      console.error('[Credit.getAllBalances] Error for user', ctx.session.userId, ':', error);
+      throw error;
+    }
   }),
 });
