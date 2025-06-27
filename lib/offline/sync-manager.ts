@@ -382,8 +382,11 @@ export class SyncManager {
         for (const log of meal_logs) {
           await this.storage.updateMealLogFromServer(log);
         }
+      } else if (meal_logs_response.status === 404) {
+        console.log('[Sync] No meal logs endpoint found (404)');
       } else {
-        console.error('[Sync] Failed to pull meal logs:', meal_logs_response.status);
+        const error_text = await meal_logs_response.text();
+        console.error('[Sync] Failed to pull meal logs:', meal_logs_response.status, error_text);
       }
       
       // Pull user settings
@@ -404,8 +407,13 @@ export class SyncManager {
           await this.storage.updateUserSettingsFromServer(settings);
           console.log('[Sync] Updated user settings from server');
         }
+      } else if (settings_response.status === 404) {
+        // 404 is expected if user has no settings yet
+        console.log('[Sync] No user settings found on server (404) - this is normal for new users');
       } else {
-        console.error('[Sync] Failed to pull settings:', settings_response.status);
+        // Log the actual error for debugging
+        const error_text = await settings_response.text();
+        console.error('[Sync] Failed to pull settings:', settings_response.status, error_text);
       }
       
     } catch (error) {

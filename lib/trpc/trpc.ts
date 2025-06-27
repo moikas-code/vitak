@@ -28,7 +28,10 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
           } as typeof session;
         }
       } catch (error) {
-        console.warn('Failed to verify Bearer token:', error);
+        console.warn('[tRPC] Failed to verify Bearer token:', error);
+        console.warn('[tRPC] Token length:', token.length);
+        console.warn('[tRPC] JWT Key available:', !!process.env.CLERK_JWT_KEY);
+        console.warn('[tRPC] Secret Key available:', !!process.env.CLERK_SECRET_KEY);
       }
     }
   }
