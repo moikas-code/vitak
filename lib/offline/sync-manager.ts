@@ -285,7 +285,7 @@ export class SyncManager {
         if (!response.ok) {
           const errorText = await response.text();
           console.error('[Sync] Failed to update settings:', response.status, errorText);
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
         console.log('[Sync] User settings updated successfully');
       }
@@ -308,6 +308,12 @@ export class SyncManager {
       
       if (item.operation === 'create') {
         console.log('[Sync] Creating meal preset:', meal_preset);
+        console.log('[Sync] Preset details:', {
+          name: meal_preset.name,
+          food_id: meal_preset.food_id,
+          portion_size_g: meal_preset.portion_size_g,
+          type_of_portion: typeof meal_preset.portion_size_g
+        });
         const response = await fetch('/api/trpc/mealPreset.create', {
           method: 'POST',
           headers: {
@@ -325,7 +331,17 @@ export class SyncManager {
         });
         
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          const errorText = await response.text();
+          console.error('[Sync] Failed to create meal preset:', response.status, errorText);
+          
+          // Check if it's a duplicate name error
+          if (response.status === 400 && errorText.includes('duplicate') || errorText.includes('23505')) {
+            console.warn('[Sync] Preset with this name already exists, skipping sync');
+            // Don't throw - just skip this preset
+            return;
+          }
+          
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
         
         const result = await response.json();
@@ -355,7 +371,9 @@ export class SyncManager {
         });
         
         if (!response.ok && response.status !== 404) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          const errorText = await response.text();
+          console.error('[Sync] Failed to delete meal preset:', response.status, errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
       }
       
