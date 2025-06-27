@@ -1,29 +1,31 @@
 import { useEffect, useState } from 'react';
-import { useUser } from '@clerk/nextjs';
+import { useUser, useAuth } from '@clerk/nextjs';
 import { api } from '@/lib/trpc/provider';
 import { OfflineStorageService } from './storage-service';
 import { SyncManager } from './sync-manager';
 import { generate_encryption_key, store_encryption_key } from './encryption';
 import { init_offline_database } from './database';
+import { TokenStorageService } from './token-storage';
 import type { MealLog, Food, UserSettings, MealLogWithFood } from '@/lib/types';
 
 // Initialize offline services when user is logged in
 export function useOfflineInit() {
   const { user, isLoaded } = useUser();
+  const { getToken } = useAuth();
   const [is_initialized, setIsInitialized] = useState(false);
   
   useEffect(() => {
     if (isLoaded && user) {
-      initializeOfflineServices(user.id).then(() => {
+      initializeOfflineServices(user.id, getToken).then(() => {
         setIsInitialized(true);
       });
     }
-  }, [isLoaded, user]);
+  }, [isLoaded, user, getToken]);
   
   return is_initialized;
 }
 
-async function initializeOfflineServices(user_id: string) {
+async function initializeOfflineServices(user_id: string, getToken: () => Promise<string | null>) {
   try {
     // Generate and store encryption key
     const encryption_key = generate_encryption_key(user_id);
@@ -31,6 +33,16 @@ async function initializeOfflineServices(user_id: string) {
     
     // Initialize database
     await init_offline_database();
+    
+    // Try to store current auth token
+    try {
+      const token = await getToken();
+      if (token) {
+        await TokenStorageService.getInstance().storeToken(token);
+      }
+    } catch (error) {
+      console.warn('Failed to store initial auth token:', error);
+    }
     
     // Start sync manager
     SyncManager.getInstance();
@@ -301,4 +313,33 @@ export function useConnectionStatus() {
     is_syncing: sync_status.is_syncing,
     unsynced_count: sync_status.unsynced_count,
   };
+}
+
+// Token refresh hook - ensures tokens stay fresh for sync
+export function useTokenRefresh() {
+  const { getToken } = useAuth();
+  const { isSignedIn } = useUser();
+  
+  useEffect(() => {
+    if (!isSignedIn) return;
+    
+    const refreshToken = async () => {
+      try {
+        const token = await getToken();
+        if (token) {
+          await TokenStorageService.getInstance().storeToken(token);
+        }
+      } catch (error) {
+        console.warn('Failed to refresh token:', error);
+      }
+    };
+    
+    // Refresh token immediately
+    refreshToken();
+    
+    // Refresh token every 30 minutes
+    const interval = setInterval(refreshToken, 30 * 60 * 1000);
+    
+    return () => clearInterval(interval);
+  }, [getToken, isSignedIn]);
 }

@@ -1,4 +1,5 @@
 import { OfflineStorageService } from './storage-service';
+import { TokenStorageService } from './token-storage';
 import type { VitaKOfflineDB } from './database';
 import type { MealLog, UserSettings, MealPreset } from '@/lib/types';
 
@@ -72,15 +73,28 @@ export class SyncManager {
         } catch (error) {
           console.error('Failed to sync item:', item, error);
           
+          const error_message = error instanceof Error ? error.message : 'Unknown error';
+          const is_auth_error = error_message.includes('AUTH_FAILED');
+          
           // Update retry count
           await this.storage.updateSyncQueueItem(item.id, {
             retry_count: item.retry_count + 1,
-            error: error instanceof Error ? error.message : 'Unknown error',
+            error: error_message,
           });
           
+          // For auth errors, don't retry too many times
+          const max_retries = is_auth_error ? 2 : 5;
+          
           // Remove from queue if too many retries
-          if (item.retry_count >= 5) {
+          if (item.retry_count >= max_retries) {
+            console.warn(`Removing item from sync queue after ${item.retry_count} retries:`, item.id);
             await this.storage.removeSyncQueueItem(item.id);
+            
+            // If it's an auth error, stop the sync entirely
+            if (is_auth_error) {
+              console.error('Stopping sync due to authentication failure');
+              throw new Error('Authentication failed - stopping sync');
+            }
           }
         }
       }
@@ -118,7 +132,14 @@ export class SyncManager {
     
     try {
       // Get auth token
-      const token = await this.getAuthToken();
+      let token: string;
+      try {
+        token = await this.getAuthToken();
+      } catch (auth_error) {
+        console.error('Authentication failed for meal log sync:', auth_error);
+        // Mark as authentication error for better handling
+        throw new Error('AUTH_FAILED: ' + (auth_error instanceof Error ? auth_error.message : 'Unknown auth error'));
+      }
       
       if (item.operation === 'create') {
         const response = await fetch('/api/trpc/mealLog.add', {
@@ -327,21 +348,44 @@ export class SyncManager {
   
   private async getAuthToken(): Promise<string> {
     try {
+      // First try to get stored token
+      const token_storage = TokenStorageService.getInstance();
+      const stored_token = await token_storage.getStoredToken();
+      
+      if (stored_token) {
+        // Check if token is expired
+        const is_expired = await token_storage.isTokenExpired();
+        if (!is_expired) {
+          return stored_token;
+        }
+        console.warn('Stored token is expired, attempting to refresh...');
+      }
+      
+      // If no stored token or expired, try to get from Clerk (if available)
       if (typeof window !== 'undefined') {
-        // Dynamically import Clerk to avoid SSR issues
         const { Clerk } = window as Window & { Clerk?: { session?: { getToken: () => Promise<string> } } };
         
         if (Clerk && Clerk.session) {
-          // Get the session token from Clerk
-          const token = await Clerk.session.getToken();
-          if (token) {
-            return token;
+          try {
+            const fresh_token = await Clerk.session.getToken();
+            if (fresh_token) {
+              // Store the fresh token for future use
+              await token_storage.storeToken(fresh_token);
+              return fresh_token;
+            }
+          } catch (clerk_error) {
+            console.warn('Failed to get token from Clerk:', clerk_error);
           }
         }
-        
-        throw new Error('No authentication token available');
       }
-      throw new Error('Window not available');
+      
+      // Final fallback to stored token even if expired (better than nothing)
+      if (stored_token) {
+        console.warn('Using expired token as last resort');
+        return stored_token;
+      }
+      
+      throw new Error('No authentication token available');
     } catch (error) {
       console.error('Failed to get auth token:', error);
       throw new Error('Authentication failed');

@@ -66,10 +66,20 @@ export interface VitaKOfflineDB extends DBSchema {
       'by-type': string;
     };
   };
+  
+  auth_tokens: {
+    key: string;
+    value: {
+      id: string;
+      token: string;
+      stored_at: Date;
+      expires_at: Date;
+    };
+  };
 }
 
 const DB_NAME = 'vitak-offline-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let db_instance: IDBPDatabase<VitaKOfflineDB> | null = null;
 
@@ -110,6 +120,11 @@ export async function init_offline_database(): Promise<IDBPDatabase<VitaKOffline
         sync_store.createIndex('by-created', 'created_at');
         sync_store.createIndex('by-type', 'type');
       }
+      
+      // Create auth_tokens store for storing authentication tokens
+      if (!db.objectStoreNames.contains('auth_tokens')) {
+        db.createObjectStore('auth_tokens', { keyPath: 'id' });
+      }
     },
   });
   
@@ -131,7 +146,8 @@ export async function clear_offline_database(): Promise<void> {
     'foods',
     'user_settings',
     'meal_presets',
-    'sync_queue'
+    'sync_queue',
+    'auth_tokens'
   ] as const, 'readwrite');
   
   await Promise.all([
@@ -140,6 +156,7 @@ export async function clear_offline_database(): Promise<void> {
     tx.objectStore('user_settings').clear(),
     tx.objectStore('meal_presets').clear(),
     tx.objectStore('sync_queue').clear(),
+    tx.objectStore('auth_tokens').clear(),
   ]);
   
   await tx.done;

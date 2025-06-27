@@ -8,7 +8,7 @@ import { QuickAdd } from "@/components/dashboard/quick-add";
 import { MealPresets } from "@/components/dashboard/meal-presets";
 import { api } from "@/lib/trpc/provider";
 import { track_dashboard_event } from "@/lib/analytics";
-import { useOfflineMealLogs, useOfflineInit, useConnectionStatus } from "@/lib/offline/hooks";
+import { useOfflineMealLogs, useOfflineInit, useConnectionStatus, useTokenRefresh } from "@/lib/offline/hooks";
 import { WifiOff, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SyncManager } from "@/lib/offline/sync-manager";
@@ -16,6 +16,7 @@ import { SyncManager } from "@/lib/offline/sync-manager";
 export default function DashboardPage() {
   const { data: balances } = api.credit.getAllBalances.useQuery();
   useOfflineInit(); // Initialize offline services
+  useTokenRefresh(); // Keep tokens fresh for sync
   const { meal_logs: todayMeals, is_loading } = useOfflineMealLogs();
   const { is_online, is_syncing, unsynced_count } = useConnectionStatus();
 
@@ -40,7 +41,13 @@ export default function DashboardPage() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => SyncManager.getInstance().forceSync()}
+                onClick={async () => {
+                  try {
+                    await SyncManager.getInstance().forceSync();
+                  } catch (error) {
+                    console.error('Manual sync failed:', error);
+                  }
+                }}
                 className="h-7 text-xs"
               >
                 <RefreshCw className="h-3 w-3 mr-1" />
