@@ -60,13 +60,16 @@ export class SyncManager {
   
   async sync() {
     if (this.is_syncing || (typeof window !== 'undefined' && !navigator.onLine)) {
+      console.log('[Sync] Skipping sync - already syncing or offline');
       return;
     }
     
+    console.log('[Sync] Starting sync process...');
     this.is_syncing = true;
     
     try {
       const sync_queue = await this.storage.getSyncQueue();
+      console.log('[Sync] Items in sync queue:', sync_queue.length);
       
       for (const item of sync_queue) {
         try {
@@ -104,10 +107,12 @@ export class SyncManager {
       // Pull latest data from server
       await this.pullServerData();
       
+      console.log('[Sync] Sync completed successfully');
     } catch (error) {
-      console.error('Sync failed:', error);
+      console.error('[Sync] Sync failed:', error);
     } finally {
       this.is_syncing = false;
+      console.log('[Sync] Sync process ended');
     }
   }
   
@@ -144,7 +149,8 @@ export class SyncManager {
       }
       
       if (item.operation === 'create') {
-        const response = await fetch('/api/trpc/mealLog.add', {
+        console.log('[Sync] Creating meal log:', meal_log);
+        const response = await fetch('/api/trpc/mealLog.add?batch=1', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -152,28 +158,37 @@ export class SyncManager {
             'x-trpc-source': 'offline-sync',
           },
           body: JSON.stringify({
-            batch: [{
-              0: {
-                json: {
-                  food_id: meal_log.food_id,
-                  portion_size_g: meal_log.portion_size_g,
-                }
+            0: {
+              json: {
+                food_id: meal_log.food_id,
+                portion_size_g: meal_log.portion_size_g,
               }
-            }]
+            }
           }),
         });
         
         if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[Sync] Failed to create meal log:', response.status, errorText);
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
         const result = await response.json();
+        console.log('[Sync] Create meal log response:', result);
         
-        // Update local meal log with server ID
-        await this.storage.updateMealLogWithServerId(meal_log.id, result.id);
+        // Extract the actual ID from the batch response
+        const serverData = result?.[0]?.result?.data?.json;
+        if (serverData?.id) {
+          // Update local meal log with server ID
+          await this.storage.updateMealLogWithServerId(meal_log.id, serverData.id);
+          console.log('[Sync] Updated local meal log with server ID:', serverData.id);
+        } else {
+          console.warn('[Sync] No server ID in response:', result);
+        }
         
       } else if (item.operation === 'delete') {
-        const response = await fetch('/api/trpc/mealLog.delete', {
+        console.log('[Sync] Deleting meal log:', meal_log.id);
+        const response = await fetch('/api/trpc/mealLog.delete?batch=1', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -181,17 +196,18 @@ export class SyncManager {
             'x-trpc-source': 'offline-sync',
           },
           body: JSON.stringify({
-            batch: [{
-              0: {
-                json: meal_log.id
-              }
-            }]
+            0: {
+              json: meal_log.id
+            }
           }),
         });
         
         if (!response.ok && response.status !== 404) {
+          const errorText = await response.text();
+          console.error('[Sync] Failed to delete meal log:', response.status, errorText);
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
+        console.log('[Sync] Delete meal log successful');
         
         // Remove from local storage
         await this.storage.deleteMealLog(meal_log.id);
@@ -214,7 +230,8 @@ export class SyncManager {
       const token = await this.getAuthToken();
       
       if (item.operation === 'update') {
-        const response = await fetch('/api/trpc/user.updateSettings', {
+        console.log('[Sync] Updating user settings:', user_settings);
+        const response = await fetch('/api/trpc/user.updateSettings?batch=1', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -222,22 +239,23 @@ export class SyncManager {
             'x-trpc-source': 'offline-sync',
           },
           body: JSON.stringify({
-            batch: [{
-              0: {
-                json: {
-                  daily_limit: user_settings.daily_limit,
-                  weekly_limit: user_settings.weekly_limit,
-                  monthly_limit: user_settings.monthly_limit,
-                  tracking_period: user_settings.tracking_period,
-                }
+            0: {
+              json: {
+                daily_limit: user_settings.daily_limit,
+                weekly_limit: user_settings.weekly_limit,
+                monthly_limit: user_settings.monthly_limit,
+                tracking_period: user_settings.tracking_period,
               }
-            }]
+            }
           }),
         });
         
         if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[Sync] Failed to update settings:', response.status, errorText);
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
+        console.log('[Sync] User settings updated successfully');
       }
       
     } catch (error) {
@@ -257,7 +275,8 @@ export class SyncManager {
       const token = await this.getAuthToken();
       
       if (item.operation === 'create') {
-        const response = await fetch('/api/trpc/mealPreset.add', {
+        console.log('[Sync] Creating meal preset:', meal_preset);
+        const response = await fetch('/api/trpc/mealPreset.create?batch=1', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -265,9 +284,13 @@ export class SyncManager {
             'x-trpc-source': 'offline-sync',
           },
           body: JSON.stringify({
-            name: meal_preset.name,
-            food_id: meal_preset.food_id,
-            portion_size_g: meal_preset.portion_size_g,
+            0: {
+              json: {
+                name: meal_preset.name,
+                food_id: meal_preset.food_id,
+                portion_size_g: meal_preset.portion_size_g,
+              }
+            }
           }),
         });
         
@@ -307,7 +330,8 @@ export class SyncManager {
       const token = await this.getAuthToken();
       
       // Pull today's meal logs
-      const meal_logs_response = await fetch('/api/trpc/mealLog.getToday?batch=1&input=' + encodeURIComponent(JSON.stringify({0:{json:{}}})), {
+      console.log('[Sync] Pulling today\'s meal logs from server...');
+      const meal_logs_response = await fetch('/api/trpc/mealLog.getToday?batch=1&input=' + encodeURIComponent(JSON.stringify({0:{}})), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -317,16 +341,21 @@ export class SyncManager {
       
       if (meal_logs_response.ok) {
         const response_data = await meal_logs_response.json();
+        console.log('[Sync] Meal logs response:', response_data);
         const meal_logs = response_data?.[0]?.result?.data?.json || [];
+        console.log('[Sync] Found', meal_logs.length, 'meal logs from server');
         
         // Update local storage with server data
         for (const log of meal_logs) {
           await this.storage.updateMealLogFromServer(log);
         }
+      } else {
+        console.error('[Sync] Failed to pull meal logs:', meal_logs_response.status);
       }
       
       // Pull user settings
-      const settings_response = await fetch('/api/trpc/user.getSettings?batch=1&input=' + encodeURIComponent(JSON.stringify({0:{json:{}}})), {
+      console.log('[Sync] Pulling user settings from server...');
+      const settings_response = await fetch('/api/trpc/user.getSettings?batch=1&input=' + encodeURIComponent(JSON.stringify({0:{}})), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -336,10 +365,14 @@ export class SyncManager {
       
       if (settings_response.ok) {
         const response_data = await settings_response.json();
+        console.log('[Sync] Settings response:', response_data);
         const settings = response_data?.[0]?.result?.data?.json;
         if (settings) {
           await this.storage.updateUserSettingsFromServer(settings);
+          console.log('[Sync] Updated user settings from server');
         }
+      } else {
+        console.error('[Sync] Failed to pull settings:', settings_response.status);
       }
       
     } catch (error) {
@@ -367,17 +400,25 @@ export class SyncManager {
       if (typeof window !== 'undefined') {
         const { Clerk } = window as Window & { Clerk?: { session?: { getToken: () => Promise<string> } } };
         
+        console.log('[Sync] Checking Clerk availability:', !!Clerk, !!Clerk?.session);
+        
         if (Clerk && Clerk.session) {
           try {
+            console.log('[Sync] Getting fresh token from Clerk...');
             const fresh_token = await Clerk.session.getToken();
             if (fresh_token) {
+              console.log('[Sync] Got fresh token from Clerk');
               // Store the fresh token for future use
               await token_storage.storeToken(fresh_token);
               return fresh_token;
+            } else {
+              console.warn('[Sync] Clerk returned no token');
             }
           } catch (clerk_error) {
-            console.warn('Failed to get token from Clerk:', clerk_error);
+            console.warn('[Sync] Failed to get token from Clerk:', clerk_error);
           }
+        } else {
+          console.warn('[Sync] Clerk not available in window');
         }
       }
       

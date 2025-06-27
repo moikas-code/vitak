@@ -27,28 +27,36 @@ export function useOfflineInit() {
 
 async function initializeOfflineServices(user_id: string, getToken: () => Promise<string | null>) {
   try {
+    console.log('[Offline] Initializing offline services for user:', user_id);
+    
     // Generate and store encryption key
     const encryption_key = generate_encryption_key(user_id);
     store_encryption_key(encryption_key);
+    console.log('[Offline] Encryption key stored');
     
     // Initialize database
     await init_offline_database();
+    console.log('[Offline] Database initialized');
     
     // Try to store current auth token
     try {
       const token = await getToken();
       if (token) {
         await TokenStorageService.getInstance().storeToken(token);
+        console.log('[Offline] Initial auth token stored');
+      } else {
+        console.warn('[Offline] No auth token available during init');
       }
     } catch (error) {
-      console.warn('Failed to store initial auth token:', error);
+      console.warn('[Offline] Failed to store initial auth token:', error);
     }
     
     // Start sync manager
     SyncManager.getInstance();
+    console.log('[Offline] Sync manager started');
     
   } catch (error) {
-    console.error('Failed to initialize offline services:', error);
+    console.error('[Offline] Failed to initialize offline services:', error);
   }
 }
 

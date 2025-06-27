@@ -16,10 +16,12 @@ export class OfflineStorageService {
   
   // Meal Logs Operations
   async addMealLog(meal_log: MealLog, _user_id: string): Promise<void> {
+    console.log('[Storage] Adding meal log:', meal_log);
     const db = await get_offline_db();
     const encryption_key = get_stored_encryption_key();
     
     if (!encryption_key) {
+      console.error('[Storage] No encryption key available');
       throw new Error('No encryption key available');
     }
     
@@ -33,8 +35,11 @@ export class OfflineStorageService {
       encrypted_data,
     });
     
+    console.log('[Storage] Meal log saved to IndexedDB');
+    
     // Add to sync queue
     await this.addToSyncQueue('meal_log', 'create', meal_log);
+    console.log('[Storage] Meal log added to sync queue');
   }
   
   async getMealLogs(user_id: string, start_date?: Date, end_date?: Date): Promise<MealLog[]> {
@@ -201,16 +206,20 @@ export class OfflineStorageService {
     operation: 'create' | 'update' | 'delete',
     data: MealLog | UserSettings | MealPreset
   ): Promise<void> {
+    console.log('[Storage] Adding to sync queue:', type, operation);
     const db = await get_offline_db();
     
-    await db.add('sync_queue', {
+    const sync_item = {
       id: `${type}_${operation}_${Date.now()}_${Math.random()}`,
       type,
       operation,
       data,
       created_at: new Date(),
       retry_count: 0,
-    });
+    };
+    
+    await db.add('sync_queue', sync_item);
+    console.log('[Storage] Added to sync queue:', sync_item.id);
   }
   
   async getSyncQueue(): Promise<VitaKOfflineDB['sync_queue']['value'][]> {
@@ -249,43 +258,25 @@ export class OfflineStorageService {
     return count;
   }
   
-  // Sync-related helper methods
+  
   async updateMealLogWithServerId(local_id: string, server_id: string): Promise<void> {
     const db = await get_offline_db();
     const meal_log = await db.get('meal_logs', local_id);
     
     if (meal_log) {
-      await db.put('meal_logs', {
-        ...meal_log,
-        id: server_id,
-        is_synced: true,
-        sync_status: 'synced',
-        last_modified: new Date(),
-      });
+      // Update the meal log with the server ID
+      meal_log.id = server_id;
+      meal_log.is_synced = true;
+      meal_log.sync_status = 'synced';
+      meal_log.last_modified = new Date();
       
-      // Remove old entry if ID changed
-      if (local_id !== server_id) {
-        await db.delete('meal_logs', local_id);
-      }
-    }
-  }
-  
-  async updateMealPresetWithServerId(local_id: string, server_id: string): Promise<void> {
-    const db = await get_offline_db();
-    const preset = await db.get('meal_presets', local_id);
-    
-    if (preset) {
-      await db.put('meal_presets', {
-        ...preset,
-        id: server_id,
-        is_synced: true,
-        last_modified: new Date(),
-      });
+      // Delete the old record with local ID
+      await db.delete('meal_logs', local_id);
       
-      // Remove old entry if ID changed
-      if (local_id !== server_id) {
-        await db.delete('meal_presets', local_id);
-      }
+      // Add the updated record with server ID
+      await db.put('meal_logs', meal_log);
+      
+      console.log('[Storage] Updated meal log with server ID:', server_id);
     }
   }
   
@@ -299,13 +290,38 @@ export class OfflineStorageService {
     
     const encrypted_data = encrypt_data(server_meal_log, encryption_key);
     
-    await db.put('meal_logs', {
-      ...server_meal_log,
-      is_synced: true,
-      sync_status: 'synced',
-      last_modified: new Date(),
-      encrypted_data,
-    });
+    // Check if we already have this meal log
+    const existing = await db.get('meal_logs', server_meal_log.id);
+    if (!existing || existing.last_modified < new Date(server_meal_log.created_at)) {
+      await db.put('meal_logs', {
+        ...server_meal_log,
+        is_synced: true,
+        sync_status: 'synced',
+        last_modified: new Date(),
+        encrypted_data,
+      });
+      console.log('[Storage] Updated meal log from server:', server_meal_log.id);
+    }
+  }
+  
+  async updateMealPresetWithServerId(local_id: string, server_id: string): Promise<void> {
+    const db = await get_offline_db();
+    const preset = await db.get('meal_presets', local_id);
+    
+    if (preset) {
+      // Update the preset with the server ID
+      preset.id = server_id;
+      preset.is_synced = true;
+      preset.last_modified = new Date();
+      
+      // Delete the old record with local ID
+      await db.delete('meal_presets', local_id);
+      
+      // Add the updated record with server ID
+      await db.put('meal_presets', preset);
+      
+      console.log('[Storage] Updated meal preset with server ID:', server_id);
+    }
   }
   
   async updateUserSettingsFromServer(server_settings: UserSettings): Promise<void> {
