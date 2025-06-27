@@ -44,8 +44,27 @@ export function createSupabaseClientWithUser(userId: string) {
  */
 export async function createDefaultUserSettings(userId: string) {
   try {
+    // First, ensure the user exists in the users table and get their UUID
+    console.log('[createDefaultUserSettings] Ensuring user exists for:', userId);
+    
+    // Use the database function to get or create user
+    const { data: userData, error: userError } = await supabaseServiceRole
+      .rpc('get_or_create_user', {
+        p_clerk_user_id: userId,
+      });
+      
+    if (userError || !userData) {
+      console.error('[createDefaultUserSettings] Failed to get/create user:', userError);
+      return null;
+    }
+    
+    const userUuid = userData;
+    console.log('[createDefaultUserSettings] Got user UUID:', userUuid);
+    
+    // Now create the settings with both user_id and user_uuid
     const default_settings = {
       user_id: userId,
+      user_uuid: userUuid,
       daily_limit: 100,
       weekly_limit: 700,
       monthly_limit: 3000,
@@ -59,10 +78,11 @@ export async function createDefaultUserSettings(userId: string) {
       .single();
       
     if (error) {
-      console.error('[createDefaultUserSettings] Error:', error);
+      console.error('[createDefaultUserSettings] Error creating settings:', error);
       return null;
     }
     
+    console.log('[createDefaultUserSettings] Successfully created settings for user:', userId);
     return data;
   } catch (error) {
     console.error('[createDefaultUserSettings] Unexpected error:', error);
