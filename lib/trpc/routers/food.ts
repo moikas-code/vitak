@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 import { food_category_schema } from "@/lib/types";
-import { createSupabaseClientWithUser } from "@/lib/db/supabase-with-user";
+import { createSupabaseClientWithUser, createPublicSupabaseClient } from "@/lib/db/supabase-with-user";
 import { TRPCError } from "@trpc/server";
 
 export const foodRouter = createTRPCRouter({
@@ -32,6 +32,7 @@ export const foodRouter = createTRPCRouter({
       const { data, error } = await query;
 
       if (error) {
+        console.error('[Food.search] Error:', error);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to search foods",
@@ -82,8 +83,8 @@ export const foodRouter = createTRPCRouter({
     ];
   }),
 
-  getCommonFoods: publicProcedure.query(async ({ ctx }) => {
-    const supabase = createSupabaseClientWithUser(ctx.session.userId || 'anonymous');
+  getCommonFoods: publicProcedure.query(async () => {
+    const supabase = createPublicSupabaseClient();
     
     // Get a larger selection of common foods from different categories
     // These are foods that users are likely to log frequently
@@ -116,6 +117,7 @@ export const foodRouter = createTRPCRouter({
       .order("name");
     
     if (error) {
+      console.error('[Food.getCommonFoods] Error:', error);
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: "Failed to fetch common foods",

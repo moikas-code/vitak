@@ -32,6 +32,27 @@ export function createSupabaseClientWithUser(_userId: string) {
 }
 
 /**
+ * Create a Supabase client for public/unauthenticated operations
+ * Uses service role key for database access without user context
+ * @returns Supabase client with service role access
+ */
+export function createPublicSupabaseClient() {
+  // Use service role key for public operations
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
+
+  return supabase;
+}
+
+/**
  * Create default user settings using service role client
  * This is only used when settings don't exist for a user
  * @param userId - The Clerk user ID
