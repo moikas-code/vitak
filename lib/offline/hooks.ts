@@ -106,12 +106,15 @@ export function useOfflineMealLogs() {
   const addMealLog = async (food_id: string, portion_size_g: number) => {
     if (!user) return;
     
+    console.log('[MealLog] Adding meal log for food:', food_id, 'portion:', portion_size_g);
+    
     // Calculate vitamin K consumed
     const food = await storage.getCachedFoods().then(foods => 
       foods.find(f => f.id === food_id)
     );
     
     if (!food) {
+      console.error('[MealLog] Food not found:', food_id);
       throw new Error('Food not found');
     }
     
@@ -127,8 +130,11 @@ export function useOfflineMealLogs() {
       created_at: new Date(),
     };
     
+    console.log('[MealLog] Created new meal log:', new_log);
+    
     // Add to local storage
     await storage.addMealLog(new_log, user.id);
+    console.log('[MealLog] Saved to local storage');
     
     // Update UI immediately with food data
     const enriched_log: MealLogWithFood = {
@@ -136,10 +142,22 @@ export function useOfflineMealLogs() {
       food
     };
     setMealLogs(prev => [enriched_log, ...prev]);
+    console.log('[MealLog] Updated UI with new log');
     
     // Try to sync if online
-    if (typeof window !== 'undefined' && navigator.onLine) {
-      SyncManager.getInstance().forceSync();
+    const is_online = typeof window !== 'undefined' && navigator.onLine;
+    console.log('[MealLog] Online status:', is_online);
+    
+    if (is_online) {
+      console.log('[MealLog] Triggering sync...');
+      try {
+        await SyncManager.getInstance().forceSync();
+        console.log('[MealLog] Sync completed');
+      } catch (error) {
+        console.error('[MealLog] Sync failed:', error);
+      }
+    } else {
+      console.log('[MealLog] Offline - sync will happen when connection is restored');
     }
   };
   

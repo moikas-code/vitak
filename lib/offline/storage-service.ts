@@ -123,12 +123,16 @@ export class OfflineStorageService {
     const db = await get_offline_db();
     const all_foods = await db.getAll('foods');
     
+    console.log('[Storage] Found', all_foods.length, 'cached foods', search ? `for search: "${search}"` : '');
+    
     if (!search) {
-      return all_foods.map(f => {
+      const foods = all_foods.map(f => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { last_accessed, is_cached, ...food } = f;
         return food as Food;
       });
+      console.log('[Storage] Returning', foods.length, 'foods without search filter');
+      return foods;
     }
     
     const search_lower = search.toLowerCase();

@@ -91,16 +91,56 @@ export const creditRouter = createTRPCRouter({
   getAllBalances: protectedProcedure.query(async ({ ctx }) => {
     // Get user settings
     const supabase = await createServerSupabaseClient();
-    const { data: settings, error: settingsError } = await supabase
+    const { data: initial_settings, error: settingsError } = await supabase
       .from("user_settings")
       .select("daily_limit, weekly_limit, monthly_limit")
       .eq("user_id", ctx.session.userId)
       .single();
 
+    let settings = initial_settings;
+
     if (settingsError) {
+      // If settings don't exist, create default settings
+      if (settingsError.code === 'PGRST116') { // No rows returned
+        console.log('[Credit] No user settings found, creating defaults for user:', ctx.session.userId);
+        
+        const default_settings = {
+          user_id: ctx.session.userId,
+          daily_limit: 100,
+          weekly_limit: 700,
+          monthly_limit: 3000,
+          tracking_period: 'daily' as const,
+        };
+        
+        const { data: new_settings, error: create_error } = await supabase
+          .from("user_settings")
+          .insert(default_settings)
+          .select("daily_limit, weekly_limit, monthly_limit")
+          .single();
+          
+        if (create_error) {
+          console.error('[Credit] Failed to create default settings:', create_error);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to create user settings",
+          });
+        }
+        
+        // Use the newly created settings
+        settings = new_settings;
+      } else {
+        console.error('[Credit] Settings error:', settingsError);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to fetch user settings",
+        });
+      }
+    }
+
+    if (!settings) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to fetch user settings",
+        message: "No user settings available",
       });
     }
 

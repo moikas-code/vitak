@@ -14,7 +14,10 @@ import { Button } from "@/components/ui/button";
 import { SyncManager } from "@/lib/offline/sync-manager";
 
 export default function DashboardPage() {
-  const { data: balances } = api.credit.getAllBalances.useQuery();
+  const { data: balances, error: balancesError } = api.credit.getAllBalances.useQuery(undefined, {
+    retry: 2,
+    retryDelay: 1000,
+  });
   useOfflineInit(); // Initialize offline services
   useTokenRefresh(); // Keep tokens fresh for sync
   const { meal_logs: todayMeals, is_loading } = useOfflineMealLogs();
@@ -83,7 +86,13 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {balances && (
+        {balancesError ? (
+          <div className="col-span-full p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-amber-800 text-sm">
+              Unable to load credit balances. This won&apos;t affect offline functionality.
+            </p>
+          </div>
+        ) : balances ? (
           <>
             <CreditDisplay
               title="Daily Credits"
@@ -104,6 +113,11 @@ export default function DashboardPage() {
               period="monthly"
             />
           </>
+        ) : (
+          <div className="col-span-full flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            <span className="ml-2 text-gray-600">Loading credits...</span>
+          </div>
         )}
       </div>
 

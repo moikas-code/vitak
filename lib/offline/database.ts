@@ -82,12 +82,34 @@ const DB_NAME = 'vitak-offline-db';
 const DB_VERSION = 2;
 
 let db_instance: IDBPDatabase<VitaKOfflineDB> | null = null;
+let db_init_promise: Promise<IDBPDatabase<VitaKOfflineDB>> | null = null;
 
 export async function init_offline_database(): Promise<IDBPDatabase<VitaKOfflineDB>> {
   if (db_instance) return db_instance;
   
+  // If initialization is already in progress, wait for it
+  if (db_init_promise) {
+    console.log('[Database] Initialization already in progress, waiting...');
+    return db_init_promise;
+  }
+  
+  // Start new initialization
+  db_init_promise = initializeDatabase();
+  
   try {
-    db_instance = await openDB<VitaKOfflineDB>(DB_NAME, DB_VERSION, {
+    db_instance = await db_init_promise;
+    return db_instance;
+  } catch (error) {
+    db_init_promise = null; // Reset on failure so it can be retried
+    throw error;
+  }
+}
+
+async function initializeDatabase(): Promise<IDBPDatabase<VitaKOfflineDB>> {
+  try {
+    console.log('[Database] Starting database initialization...');
+    
+    const db = await openDB<VitaKOfflineDB>(DB_NAME, DB_VERSION, {
       upgrade(db) {
         // Create meal_logs store
         if (!db.objectStoreNames.contains('meal_logs')) {
@@ -127,25 +149,53 @@ export async function init_offline_database(): Promise<IDBPDatabase<VitaKOffline
           db.createObjectStore('auth_tokens', { keyPath: 'id' });
         }
       },
-      blocked() {
-        console.error('[Database] Database blocked by another connection');
-        throw new Error('Database is blocked by another tab or window. Please close other tabs and try again.');
+      blocked(currentVersion, blockedVersion, event) {
+        console.warn('[Database] Database blocked by another connection', { currentVersion, blockedVersion });
+        
+        // Instead of throwing immediately, wait a bit and try to close other connections
+        const target = event.target as IDBOpenDBRequest;
+        
+        // Create a promise that resolves when the block is cleared
+        return new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error('Database remains blocked after timeout. Please close other tabs and refresh.'));
+          }, 10000); // 10 second timeout
+          
+          target.addEventListener('success', () => {
+            console.log('[Database] Block cleared, database opened successfully');
+            clearTimeout(timeout);
+            resolve(target.result);
+          });
+          
+          target.addEventListener('error', () => {
+            clearTimeout(timeout);
+            reject(new Error('Database blocked and failed to open'));
+          });
+        });
       },
-      blocking() {
-        console.warn('[Database] This connection is blocking another');
+      blocking(currentVersion, blockedVersion, _event) {
+        console.warn('[Database] This connection is blocking another', { currentVersion, blockedVersion });
+        // Close the database to unblock other connections
+        if (db_instance) {
+          console.log('[Database] Closing database to unblock other connections');
+          db_instance.close();
+          db_instance = null;
+        }
       },
       terminated() {
         console.error('[Database] Database connection terminated unexpectedly');
-        db_instance = null; // Reset so it can be retried
+        db_instance = null;
+        db_init_promise = null;
         throw new Error('Database connection was terminated. Please refresh the page.');
       },
     });
     
     console.log('[Database] Successfully initialized offline database');
-    return db_instance;
+    return db;
   } catch (error) {
     console.error('[Database] Failed to initialize offline database:', error);
-    db_instance = null; // Reset on failure
+    db_instance = null;
+    db_init_promise = null;
     
     if (error instanceof Error) {
       if (error.name === 'SecurityError') {

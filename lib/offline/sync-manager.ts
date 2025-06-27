@@ -22,32 +22,52 @@ export class SyncManager {
   }
   
   private setupEventListeners() {
+    console.log('[Sync] Setting up event listeners...');
+    
     // Listen for online/offline events
     window.addEventListener('online', () => {
-      console.log('Connection restored, starting sync...');
+      console.log('[Sync] Connection restored, starting sync...');
       this.startSync();
       // Immediately sync when coming back online
       setTimeout(() => this.sync(), 1000); // Small delay to ensure connection is stable
     });
     
     window.addEventListener('offline', () => {
-      console.log('Connection lost, pausing sync...');
+      console.log('[Sync] Connection lost, pausing sync...');
       this.stopSync();
     });
     
     // Start sync if online
-    if (typeof window !== 'undefined' && navigator.onLine) {
+    const is_online = typeof window !== 'undefined' && navigator.onLine;
+    console.log('[Sync] Initial online status:', is_online);
+    
+    if (is_online) {
+      console.log('[Sync] Starting initial sync...');
       this.startSync();
+    } else {
+      console.log('[Sync] Starting offline - will sync when connection is restored');
     }
   }
   
   startSync() {
+    console.log('[Sync] Starting sync service...');
+    
+    // Clear any existing interval
+    if (this.sync_interval) {
+      console.log('[Sync] Clearing existing sync interval');
+      clearInterval(this.sync_interval);
+    }
+    
     // Sync every 30 seconds when online
     this.sync_interval = setInterval(() => {
+      console.log('[Sync] Periodic sync triggered');
       this.sync();
     }, 30000);
     
+    console.log('[Sync] Sync interval set for every 30 seconds');
+    
     // Also sync immediately
+    console.log('[Sync] Triggering immediate sync');
     this.sync();
   }
   
