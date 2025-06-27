@@ -4,31 +4,26 @@ import { supabaseServiceRole } from "./supabase-server";
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
   throw new Error("Missing env.NEXT_PUBLIC_SUPABASE_URL");
 }
-if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-  throw new Error("Missing env.NEXT_PUBLIC_SUPABASE_ANON_KEY");
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error("Missing env.SUPABASE_SERVICE_ROLE_KEY");
 }
 
 /**
- * Create a Supabase client with a specific user ID for RLS context
- * This is used by tRPC procedures that already have the user ID from session
- * @param userId - The Clerk user ID to set for RLS policies
- * @returns Supabase client configured with the user's context
+ * Create a Supabase client for authenticated operations
+ * Uses service role key since we handle authentication at the tRPC layer
+ * @param _userId - The Clerk user ID (kept for compatibility, not used with service role)
+ * @returns Supabase client with service role access
  */
-export function createSupabaseClientWithUser(userId: string) {
-  // Create client with custom headers for RLS
+export function createSupabaseClientWithUser(_userId: string) {
+  // Use service role key since we enforce security at the application layer
+  // This bypasses RLS which isn't properly integrated with Clerk
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
-      },
-      global: {
-        headers: {
-          // Pass the user ID for RLS policies
-          "x-clerk-user-id": userId,
-        },
       },
     }
   );
