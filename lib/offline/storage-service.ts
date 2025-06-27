@@ -1,5 +1,6 @@
 import { get_offline_db, type VitaKOfflineDB } from './database';
 import { encrypt_data, decrypt_data, get_stored_encryption_key } from './encryption';
+import { OfflineInitManager } from './init-manager';
 import type { MealLog, Food, UserSettings, MealPreset } from '@/lib/types';
 
 export class OfflineStorageService {
@@ -14,35 +15,65 @@ export class OfflineStorageService {
     return OfflineStorageService.instance;
   }
   
-  // Meal Logs Operations
-  async addMealLog(meal_log: MealLog, _user_id: string): Promise<void> {
-    console.log('[Storage] Adding meal log:', meal_log);
-    const db = await get_offline_db();
-    const encryption_key = get_stored_encryption_key();
-    
-    if (!encryption_key) {
-      console.error('[Storage] No encryption key available');
-      throw new Error('No encryption key available');
+  private async ensureInitialized(user_id: string): Promise<void> {
+    const init_manager = OfflineInitManager.getInstance();
+    const is_initialized = await init_manager.ensureInitialized(user_id);
+    if (!is_initialized) {
+      throw new Error('Failed to initialize offline storage');
     }
+  }
+  
+  // Meal Logs Operations
+  async addMealLog(meal_log: MealLog, user_id: string): Promise<void> {
+    console.log('[Storage] Adding meal log:', meal_log);
     
-    const encrypted_data = encrypt_data(meal_log, encryption_key);
-    
-    await db.add('meal_logs', {
-      ...meal_log,
-      is_synced: false,
-      sync_status: 'pending',
-      last_modified: new Date(),
-      encrypted_data,
-    });
-    
-    console.log('[Storage] Meal log saved to IndexedDB');
-    
-    // Add to sync queue
-    await this.addToSyncQueue('meal_log', 'create', meal_log);
-    console.log('[Storage] Meal log added to sync queue');
+    try {
+      await this.ensureInitialized(user_id);
+      
+      const db = await get_offline_db();
+      const encryption_key = get_stored_encryption_key();
+      
+      if (!encryption_key) {
+        console.error('[Storage] No encryption key available');
+        throw new Error('No encryption key available');
+      }
+      
+      const encrypted_data = encrypt_data(meal_log, encryption_key);
+      
+      await db.add('meal_logs', {
+        ...meal_log,
+        is_synced: false,
+        sync_status: 'pending',
+        last_modified: new Date(),
+        encrypted_data,
+      });
+      
+      console.log('[Storage] Meal log saved to IndexedDB');
+      
+      // Add to sync queue
+      await this.addToSyncQueue('meal_log', 'create', meal_log);
+      console.log('[Storage] Meal log added to sync queue');
+    } catch (error) {
+      console.error('[Storage] Failed to add meal log:', error);
+      
+      // Handle specific IndexedDB errors
+      if (error instanceof Error) {
+        if (error.name === 'QuotaExceededError') {
+          throw new Error('Storage quota exceeded. Please clear some data and try again.');
+        } else if (error.name === 'InvalidStateError') {
+          throw new Error('Database is in an invalid state. Please refresh the page.');
+        } else if (error.message.includes('encryption key')) {
+          throw error; // Re-throw encryption errors as-is
+        }
+      }
+      
+      throw new Error('Failed to save meal log. Please try again.');
+    }
   }
   
   async getMealLogs(user_id: string, start_date?: Date, end_date?: Date): Promise<MealLog[]> {
+    await this.ensureInitialized(user_id);
+    
     const db = await get_offline_db();
     const encryption_key = get_stored_encryption_key();
     
@@ -112,6 +143,8 @@ export class OfflineStorageService {
   
   // User Settings Operations
   async saveUserSettings(settings: UserSettings): Promise<void> {
+    await this.ensureInitialized(settings.user_id);
+    
     const db = await get_offline_db();
     const encryption_key = get_stored_encryption_key();
     
@@ -132,6 +165,8 @@ export class OfflineStorageService {
   }
   
   async getUserSettings(user_id: string): Promise<UserSettings | null> {
+    await this.ensureInitialized(user_id);
+    
     const db = await get_offline_db();
     const encryption_key = get_stored_encryption_key();
     
@@ -152,6 +187,8 @@ export class OfflineStorageService {
   
   // Meal Presets Operations
   async saveMealPreset(preset: MealPreset): Promise<void> {
+    await this.ensureInitialized(preset.user_id);
+    
     const db = await get_offline_db();
     const encryption_key = get_stored_encryption_key();
     
@@ -172,6 +209,8 @@ export class OfflineStorageService {
   }
   
   async getMealPresets(user_id: string): Promise<MealPreset[]> {
+    await this.ensureInitialized(user_id);
+    
     const db = await get_offline_db();
     const encryption_key = get_stored_encryption_key();
     

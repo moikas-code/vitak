@@ -86,49 +86,79 @@ let db_instance: IDBPDatabase<VitaKOfflineDB> | null = null;
 export async function init_offline_database(): Promise<IDBPDatabase<VitaKOfflineDB>> {
   if (db_instance) return db_instance;
   
-  db_instance = await openDB<VitaKOfflineDB>(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      // Create meal_logs store
-      if (!db.objectStoreNames.contains('meal_logs')) {
-        const meal_logs_store = db.createObjectStore('meal_logs', { keyPath: 'id' });
-        meal_logs_store.createIndex('by-user', 'user_id');
-        meal_logs_store.createIndex('by-sync-status', 'sync_status');
-        meal_logs_store.createIndex('by-logged-at', 'logged_at');
+  try {
+    db_instance = await openDB<VitaKOfflineDB>(DB_NAME, DB_VERSION, {
+      upgrade(db) {
+        // Create meal_logs store
+        if (!db.objectStoreNames.contains('meal_logs')) {
+          const meal_logs_store = db.createObjectStore('meal_logs', { keyPath: 'id' });
+          meal_logs_store.createIndex('by-user', 'user_id');
+          meal_logs_store.createIndex('by-sync-status', 'sync_status');
+          meal_logs_store.createIndex('by-logged-at', 'logged_at');
+        }
+        
+        // Create foods store (for caching frequently used foods)
+        if (!db.objectStoreNames.contains('foods')) {
+          const foods_store = db.createObjectStore('foods', { keyPath: 'id' });
+          foods_store.createIndex('by-name', 'name');
+          foods_store.createIndex('by-category', 'category');
+        }
+        
+        // Create user_settings store
+        if (!db.objectStoreNames.contains('user_settings')) {
+          db.createObjectStore('user_settings', { keyPath: 'user_id' });
+        }
+        
+        // Create meal_presets store
+        if (!db.objectStoreNames.contains('meal_presets')) {
+          const presets_store = db.createObjectStore('meal_presets', { keyPath: 'id' });
+          presets_store.createIndex('by-user', 'user_id');
+        }
+        
+        // Create sync_queue store for offline operations
+        if (!db.objectStoreNames.contains('sync_queue')) {
+          const sync_store = db.createObjectStore('sync_queue', { keyPath: 'id' });
+          sync_store.createIndex('by-created', 'created_at');
+          sync_store.createIndex('by-type', 'type');
+        }
+        
+        // Create auth_tokens store for storing authentication tokens
+        if (!db.objectStoreNames.contains('auth_tokens')) {
+          db.createObjectStore('auth_tokens', { keyPath: 'id' });
+        }
+      },
+      blocked() {
+        console.error('[Database] Database blocked by another connection');
+        throw new Error('Database is blocked by another tab or window. Please close other tabs and try again.');
+      },
+      blocking() {
+        console.warn('[Database] This connection is blocking another');
+      },
+      terminated() {
+        console.error('[Database] Database connection terminated unexpectedly');
+        db_instance = null; // Reset so it can be retried
+        throw new Error('Database connection was terminated. Please refresh the page.');
+      },
+    });
+    
+    console.log('[Database] Successfully initialized offline database');
+    return db_instance;
+  } catch (error) {
+    console.error('[Database] Failed to initialize offline database:', error);
+    db_instance = null; // Reset on failure
+    
+    if (error instanceof Error) {
+      if (error.name === 'SecurityError') {
+        throw new Error('Cannot access offline storage in private/incognito mode. Please use normal browsing mode.');
+      } else if (error.name === 'QuotaExceededError') {
+        throw new Error('Storage quota exceeded. Please clear browser data and try again.');
+      } else if (error.name === 'InvalidStateError') {
+        throw new Error('Database is in an invalid state. Please refresh the page.');
       }
-      
-      // Create foods store (for caching frequently used foods)
-      if (!db.objectStoreNames.contains('foods')) {
-        const foods_store = db.createObjectStore('foods', { keyPath: 'id' });
-        foods_store.createIndex('by-name', 'name');
-        foods_store.createIndex('by-category', 'category');
-      }
-      
-      // Create user_settings store
-      if (!db.objectStoreNames.contains('user_settings')) {
-        db.createObjectStore('user_settings', { keyPath: 'user_id' });
-      }
-      
-      // Create meal_presets store
-      if (!db.objectStoreNames.contains('meal_presets')) {
-        const presets_store = db.createObjectStore('meal_presets', { keyPath: 'id' });
-        presets_store.createIndex('by-user', 'user_id');
-      }
-      
-      // Create sync_queue store for offline operations
-      if (!db.objectStoreNames.contains('sync_queue')) {
-        const sync_store = db.createObjectStore('sync_queue', { keyPath: 'id' });
-        sync_store.createIndex('by-created', 'created_at');
-        sync_store.createIndex('by-type', 'type');
-      }
-      
-      // Create auth_tokens store for storing authentication tokens
-      if (!db.objectStoreNames.contains('auth_tokens')) {
-        db.createObjectStore('auth_tokens', { keyPath: 'id' });
-      }
-    },
-  });
-  
-  return db_instance;
+    }
+    
+    throw error;
+  }
 }
 
 export async function get_offline_db(): Promise<IDBPDatabase<VitaKOfflineDB>> {

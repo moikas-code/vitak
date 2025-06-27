@@ -37,12 +37,12 @@ export function decrypt_data<T>(encrypted_data: string, encryption_key: string):
 
 /**
  * Stores the encryption key securely in the browser
- * Uses sessionStorage for additional security (cleared when browser closes)
+ * Uses localStorage to persist across PWA sessions
  */
 export function store_encryption_key(key: string): void {
-  // Store in memory for current session
+  // Store persistently for PWA offline support
   if (typeof window !== 'undefined') {
-    sessionStorage.setItem('vitak_encryption_key', key);
+    localStorage.setItem('vitak_encryption_key', key);
   }
 }
 
@@ -51,7 +51,7 @@ export function store_encryption_key(key: string): void {
  */
 export function get_stored_encryption_key(): string | null {
   if (typeof window !== 'undefined') {
-    return sessionStorage.getItem('vitak_encryption_key');
+    return localStorage.getItem('vitak_encryption_key');
   }
   return null;
 }
@@ -61,6 +61,6 @@ export function get_stored_encryption_key(): string | null {
  */
 export function clear_encryption_key(): void {
   if (typeof window !== 'undefined') {
-    sessionStorage.removeItem('vitak_encryption_key');
+    localStorage.removeItem('vitak_encryption_key');
   }
 }

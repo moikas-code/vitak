@@ -3,8 +3,7 @@ import { useUser, useAuth } from '@clerk/nextjs';
 import { api } from '@/lib/trpc/provider';
 import { OfflineStorageService } from './storage-service';
 import { SyncManager } from './sync-manager';
-import { generate_encryption_key, store_encryption_key } from './encryption';
-import { init_offline_database } from './database';
+import { OfflineInitManager } from './init-manager';
 import { TokenStorageService } from './token-storage';
 import type { MealLog, Food, UserSettings, MealLogWithFood, MealPreset, MealPresetWithFood } from '@/lib/types';
 
@@ -16,48 +15,13 @@ export function useOfflineInit() {
   
   useEffect(() => {
     if (isLoaded && user) {
-      initializeOfflineServices(user.id, getToken).then(() => {
-        setIsInitialized(true);
+      OfflineInitManager.getInstance().initialize(user.id, getToken).then((result) => {
+        setIsInitialized(result);
       });
     }
   }, [isLoaded, user, getToken]);
   
   return is_initialized;
-}
-
-async function initializeOfflineServices(user_id: string, getToken: () => Promise<string | null>) {
-  try {
-    console.log('[Offline] Initializing offline services for user:', user_id);
-    
-    // Generate and store encryption key
-    const encryption_key = generate_encryption_key(user_id);
-    store_encryption_key(encryption_key);
-    console.log('[Offline] Encryption key stored');
-    
-    // Initialize database
-    await init_offline_database();
-    console.log('[Offline] Database initialized');
-    
-    // Try to store current auth token
-    try {
-      const token = await getToken();
-      if (token) {
-        await TokenStorageService.getInstance().storeToken(token);
-        console.log('[Offline] Initial auth token stored');
-      } else {
-        console.warn('[Offline] No auth token available during init');
-      }
-    } catch (error) {
-      console.warn('[Offline] Failed to store initial auth token:', error);
-    }
-    
-    // Start sync manager
-    SyncManager.getInstance();
-    console.log('[Offline] Sync manager started');
-    
-  } catch (error) {
-    console.error('[Offline] Failed to initialize offline services:', error);
-  }
 }
 
 // Offline-aware meal log hooks
@@ -86,14 +50,7 @@ export function useOfflineMealLogs() {
     if (!user) return;
     
     try {
-      // Always try to use server data if available
-      if (server_query.data && !server_query.isError) {
-        setMealLogs(server_query.data);
-        setIsLoading(false);
-        return;
-      }
-      
-      // Only use local storage if server query failed or no data yet
+      // Always load local data first
       const local_logs = await storage.getMealLogs(user.id);
       
       // Enrich with food data
@@ -106,9 +63,41 @@ export function useOfflineMealLogs() {
         } as MealLogWithFood;
       });
       
-      setMealLogs(enriched_logs);
+      // Merge with server data if available
+      if (server_query.data && !server_query.isError) {
+        // Merge local and server data, prioritizing local unsynced changes
+        const merged_logs = [...enriched_logs];
+        
+        // Add any server logs that aren't in local storage
+        for (const server_log of server_query.data) {
+          const local_exists = enriched_logs.some(local => 
+            local.id === server_log.id || 
+            // Check if a local log was synced and got a new server ID
+            (local.id.startsWith('local_') && local.food_id === server_log.food_id && 
+             Math.abs(new Date(local.logged_at).getTime() - new Date(server_log.logged_at).getTime()) < 1000)
+          );
+          
+          if (!local_exists) {
+            merged_logs.push(server_log);
+          }
+        }
+        
+        // Sort by logged_at date
+        merged_logs.sort((a, b) => 
+          new Date(b.logged_at).getTime() - new Date(a.logged_at).getTime()
+        );
+        
+        setMealLogs(merged_logs);
+      } else {
+        // No server data, use local data only
+        setMealLogs(enriched_logs);
+      }
     } catch (error) {
       console.error('Failed to load meal logs:', error);
+      // If local storage fails, fall back to server data if available
+      if (server_query.data && !server_query.isError) {
+        setMealLogs(server_query.data);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -316,17 +305,22 @@ export function useConnectionStatus() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000);
       
-      const response = await fetch('/api/trpc/user.getSettings?batch=1', {
-        method: 'HEAD',
+      // Use a simple health check endpoint or the food categories which is lightweight
+      const response = await fetch('/api/trpc/food.getCategories', {
+        method: 'GET',
         signal: controller.signal,
         cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
       
       clearTimeout(timeoutId);
-      const connected = response.ok || response.status === 401; // 401 means connected but not authenticated
+      const connected = response.ok || response.status === 401 || response.status === 403;
       setHasInternet(connected);
       return connected;
-    } catch {
+    } catch (error) {
+      console.debug('[Connection] Connectivity test failed:', error);
       setHasInternet(false);
       return false;
     }

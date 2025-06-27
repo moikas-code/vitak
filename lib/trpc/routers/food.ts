@@ -85,24 +85,34 @@ export const foodRouter = createTRPCRouter({
   getCommonFoods: publicProcedure.query(async ({ ctx: _ctx }) => {
     const supabase = await createServerSupabaseClient();
     
-    // Get a selection of common foods from different categories
-    const commonFoodNames = [
-      'Spinach (cooked)',
-      'Kale (cooked)',
-      'Broccoli (cooked)',
-      'Romaine lettuce',
-      'Cabbage (raw)',
-      'Chicken breast',
-      'Salmon',
-      'Eggs',
-      'Milk (whole)',
-      'White rice'
-    ];
-    
+    // Get a larger selection of common foods from different categories
+    // These are foods that users are likely to log frequently
     const { data, error } = await supabase
       .from("foods")
-      .select("id, name, vitamin_k_mcg_per_100g")
-      .in("name", commonFoodNames)
+      .select("*")
+      .or(`
+        name.ilike.%spinach%,
+        name.ilike.%kale%,
+        name.ilike.%broccoli%,
+        name.ilike.%lettuce%,
+        name.ilike.%cabbage%,
+        name.ilike.%chicken%,
+        name.ilike.%beef%,
+        name.ilike.%salmon%,
+        name.ilike.%egg%,
+        name.ilike.%milk%,
+        name.ilike.%rice%,
+        name.ilike.%bread%,
+        name.ilike.%potato%,
+        name.ilike.%tomato%,
+        name.ilike.%carrot%,
+        name.ilike.%apple%,
+        name.ilike.%banana%,
+        name.ilike.%cheese%,
+        name.ilike.%yogurt%,
+        name.ilike.%pasta%
+      `)
+      .limit(100)
       .order("name");
     
     if (error) {
@@ -112,6 +122,10 @@ export const foodRouter = createTRPCRouter({
       });
     }
     
-    return data;
+    return data.map((food) => ({
+      ...food,
+      created_at: new Date(food.created_at),
+      updated_at: new Date(food.updated_at),
+    }));
   }),
 });
