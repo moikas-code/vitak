@@ -108,4 +108,19 @@ export const RATE_LIMITS = {
     windowMs: 60 * 60 * 1000,
     maxRequests: 5,
   },
+  // Admin read operations: 200 per hour
+  ADMIN_READ: {
+    windowMs: 60 * 60 * 1000,
+    maxRequests: 200,
+  },
+  // Admin write operations: 50 per hour
+  ADMIN_WRITE: {
+    windowMs: 60 * 60 * 1000,
+    maxRequests: 50,
+  },
+  // Admin bulk operations: 10 per hour
+  ADMIN_BULK: {
+    windowMs: 60 * 60 * 1000,
+    maxRequests: 10,
+  },
 };

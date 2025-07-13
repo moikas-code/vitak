@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { MessageSquare, Loader2, Star } from "lucide-react";
 import { useToast } from "@/lib/hooks/use-toast";
 import { cn } from "@/lib/utils/cn";
+import { validateFeedback } from "@/lib/security/input-validation";
 
 interface FeedbackModalProps {
   isOpen: boolean;
@@ -38,19 +39,11 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
       return;
     }
 
-    if (!feedback.trim()) {
+    const validation = validateFeedback(feedback);
+    if (!validation.isValid) {
       toast({
-        title: "Feedback required",
-        description: "Please enter your feedback",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (feedback.length > 500) {
-      toast({
-        title: "Feedback too long",
-        description: "Please keep your feedback under 500 characters",
+        title: "Invalid feedback",
+        description: validation.error,
         variant: "destructive",
       });
       return;
@@ -130,17 +123,27 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label>How would you rate your experience?</Label>
-            <div className="flex gap-1">
+            <Label id="rating-label">How would you rate your experience?</Label>
+            <div className="flex gap-1" role="radiogroup" aria-labelledby="rating-label">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
                   type="button"
                   onClick={() => setRating(star)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setRating(star);
+                    }
+                  }}
                   onMouseEnter={() => setHoveredRating(star)}
                   onMouseLeave={() => setHoveredRating(0)}
-                  className="p-1 transition-colors hover:bg-accent rounded"
+                  className="p-1 transition-colors hover:bg-accent rounded focus:outline-none focus:ring-2 focus:ring-primary"
                   disabled={isLoading}
+                  role="radio"
+                  aria-checked={rating === star}
+                  aria-label={`Rate ${star} out of 5 stars`}
+                  tabIndex={0}
                 >
                   <Star
                     className={cn(

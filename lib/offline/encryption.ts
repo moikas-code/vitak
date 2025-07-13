@@ -1,20 +1,27 @@
 import CryptoJS from 'crypto-js';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('offline-encryption');
 
 /**
  * Generates a unique encryption key for the user based on their Clerk ID
- * This key is stored in the browser's secure storage
+ * Supports dual-iteration for backward compatibility during migration
  */
-export function generate_encryption_key(user_id: string): string {
+export function generate_encryption_key(user_id: string, use_legacy_iterations = false): string {
   // Generate a key based on user ID and a salt
   const salt = process.env.NEXT_PUBLIC_ENCRYPTION_SALT || 'vitak-tracker-salt';
+  
+  // Use stronger iterations for new data, but support legacy for existing data
+  const iterations = use_legacy_iterations ? 1000 : 100000;
+  
   return CryptoJS.PBKDF2(user_id, salt, {
     keySize: 256 / 32,
-    iterations: 1000
+    iterations
   }).toString();
 }
 
 /**
- * Encrypts data using AES encryption
+ * Encrypts data using AES encryption with specified key
  */
 export function encrypt_data<T>(data: T, encryption_key: string): string {
   const json_string = JSON.stringify(data);
@@ -22,17 +29,47 @@ export function encrypt_data<T>(data: T, encryption_key: string): string {
 }
 
 /**
- * Decrypts data that was encrypted with encrypt_data
+ * Encrypts data using strong encryption (always uses new iterations)
  */
-export function decrypt_data<T>(encrypted_data: string, encryption_key: string): T {
+export function encrypt_data_strong<T>(data: T, user_id: string): string {
+  const strong_key = generate_encryption_key(user_id, false);
+  return encrypt_data(data, strong_key);
+}
+
+/**
+ * Decrypts data that was encrypted with encrypt_data
+ * Supports backward compatibility with legacy encryption
+ */
+export function decrypt_data<T>(encrypted_data: string, user_id: string): T {
+  // First try with new strong iterations
   try {
-    const decrypted = CryptoJS.AES.decrypt(encrypted_data, encryption_key);
+    const strong_key = generate_encryption_key(user_id, false);
+    const decrypted = CryptoJS.AES.decrypt(encrypted_data, strong_key);
     const json_string = decrypted.toString(CryptoJS.enc.Utf8);
-    return JSON.parse(json_string);
+    if (json_string) {
+      return JSON.parse(json_string);
+    }
   } catch (error) {
-    console.error('Failed to decrypt data:', error);
+    // If new key fails, try legacy key for backward compatibility
+    logger.debug('Strong encryption failed, trying legacy', { user_id: user_id.substring(0, 8) + '...' });
+  }
+  
+  // Fallback to legacy iterations for existing data
+  try {
+    const legacy_key = generate_encryption_key(user_id, true);
+    const decrypted = CryptoJS.AES.decrypt(encrypted_data, legacy_key);
+    const json_string = decrypted.toString(CryptoJS.enc.Utf8);
+    if (json_string) {
+      const result = JSON.parse(json_string);
+      // TODO: Re-encrypt with stronger key in background
+      return result;
+    }
+  } catch (error) {
+    logger.error('Failed to decrypt data with both keys', error, { user_id: user_id.substring(0, 8) + '...' });
     throw new Error('Failed to decrypt data');
   }
+  
+  throw new Error('Failed to decrypt data - no valid key found');
 }
 
 /**

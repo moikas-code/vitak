@@ -1,3 +1,5 @@
+export type UserRole = "user" | "admin";
+
 export type Database = {
   public: {
     Tables: {
@@ -9,6 +11,7 @@ export type Database = {
           weekly_limit: number;
           monthly_limit: number;
           tracking_period: "daily" | "weekly" | "monthly";
+          role: UserRole;
           created_at: string;
           updated_at: string;
         };
@@ -19,6 +22,7 @@ export type Database = {
           weekly_limit?: number;
           monthly_limit?: number;
           tracking_period?: "daily" | "weekly" | "monthly";
+          role?: UserRole;
           created_at?: string;
           updated_at?: string;
         };
@@ -29,6 +33,7 @@ export type Database = {
           weekly_limit?: number;
           monthly_limit?: number;
           tracking_period?: "daily" | "weekly" | "monthly";
+          role?: UserRole;
           created_at?: string;
           updated_at?: string;
         };
@@ -41,6 +46,8 @@ export type Database = {
           category: "vegetables" | "fruits" | "proteins" | "grains" | "dairy" | "fats_oils" | "beverages" | "other";
           common_portion_size_g: number;
           common_portion_name: string;
+          created_by: string | null;
+          updated_by: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -51,6 +58,8 @@ export type Database = {
           category: "vegetables" | "fruits" | "proteins" | "grains" | "dairy" | "fats_oils" | "beverages" | "other";
           common_portion_size_g: number;
           common_portion_name: string;
+          created_by?: string | null;
+          updated_by?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -61,8 +70,45 @@ export type Database = {
           category?: "vegetables" | "fruits" | "proteins" | "grains" | "dairy" | "fats_oils" | "beverages" | "other";
           common_portion_size_g?: number;
           common_portion_name?: string;
+          created_by?: string | null;
+          updated_by?: string | null;
           created_at?: string;
           updated_at?: string;
+        };
+      };
+      food_audit_log: {
+        Row: {
+          id: number;
+          food_id: string;
+          action: "create" | "update" | "delete";
+          changed_by: string;
+          changed_at: string;
+          old_values: any | null;
+          new_values: any | null;
+          ip_address: string | null;
+          user_agent: string | null;
+        };
+        Insert: {
+          id?: number;
+          food_id: string;
+          action: "create" | "update" | "delete";
+          changed_by: string;
+          changed_at?: string;
+          old_values?: any | null;
+          new_values?: any | null;
+          ip_address?: string | null;
+          user_agent?: string | null;
+        };
+        Update: {
+          id?: number;
+          food_id?: string;
+          action?: "create" | "update" | "delete";
+          changed_by?: string;
+          changed_at?: string;
+          old_values?: any | null;
+          new_values?: any | null;
+          ip_address?: string | null;
+          user_agent?: string | null;
         };
       };
       meal_logs: {

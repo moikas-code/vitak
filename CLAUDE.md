@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+- Format each individual memory as a bullet point and group related memories under descriptive markdown headings.
+
+- Perform a web search if you need more information
+
+- Create a Task in the KB when making a plan to keep track between sessions
+
+- Never use placeholder logic when writing logic; provide a full solution
+
 ## Development Commands
 
 ```bash
@@ -130,3 +138,105 @@ DISCORD_WEBHOOK_URL
 ## Documentation References
 
 - Vercel Analytics documentation: https://vercel.com/docs/analytics/package
+
+
+## File Organization
+
+### Directory Structure
+
+- **Root**: Only config files, build files
+- **tests/**: All test files and fixtures organized by type
+- **examples/**: Demo programs and tutorials
+- **kb/**: Knowledge base, documentation (see KB Organization below)
+- **tools/**: Development utilities and maintenance scripts
+
+
+## KB (Knowledge Base) Organization
+
+The `kb/` directory follows a specific structure for tracking project state:
+
+### KB Directory Structure
+
+```
+kb/
+├── active/          # Current work and open issues
+├── completed/       # Resolved issues and finished work
+├── status/          # Overall project status tracking
+├── development/     # Development guides and standards
+├── architecture/    # Design decisions and architecture docs
+├── guides/          # How-to guides and tutorials
+├── references/      # External references and resources
+├── planning/        # Future plans and roadmaps
+├── reports/         # Analysis and investigation reports
+├── notes/           # Miscellaneous notes and observations
+└── legacy/          # Deprecated or historical documents
+```
+
+### What Goes Where
+
+#### `active/` - Current Work
+
+- Open issues and bugs (e.g., KNOWN_ISSUES.md)
+- In-progress implementations
+- Current investigation reports
+- Active todo lists and tasks
+- **Move to `completed/` when resolved**
+
+#### `completed/` - Resolved Work
+
+- Closed issues with resolution details
+- Completed feature implementations
+- Finished investigation reports
+- Resolved security audits
+- **Include resolution date and summary**
+
+#### `status/` - Project Status
+
+- Overall implementation status (OVERALL_STATUS.md)
+- Component-specific status reports
+- Production readiness assessments
+- Compliance status tracking
+- **Keep continuously updated**
+
+#### `development/` - Development Resources
+
+- Coding standards and guidelines
+- Testing standards (e.g., CLOSURE_TESTING_STANDARDS.md)
+- Implementation guides
+- Best practices documentation
+- **Reference documents for developers**
+
+#### Other Directories
+
+- **architecture/**: Design decisions, system architecture
+- **guides/**: Step-by-step tutorials, how-to guides
+- **references/**: Links to external docs, resources
+- **planning/**: Roadmaps, future feature plans
+- **reports/**: Investigation results, analysis reports
+- **notes/**: Quick notes, observations, ideas
+- **legacy/**: Old/deprecated docs kept for reference
+
+## CLI Commands
+
+### Security and Optimization
+
+- `/audit` - Perform a Security (SOC2 Compliant), and Optimization Audit of the provided file or files; Ensure they are ready for Production.
+- `/implement` - Implement a production-ready implementation of the provided text; Refer to and update the @kb documentation for tracking and guidance
+- `/scan` - Audit the entire codebase, create any issue that have been added to the KB, and report back on the completion status of the project;
+
+### Available MCP Tools
+
+- `kb_read` - Read any KB file (e.g., "active/KNOWN_ISSUES.md")
+- `kb_list` - Browse KB directory structure
+- `kb_update` - Create/update KB files
+- `kb_delete` - Delete KB files
+- `kb_search` - Search KB content
+- `kb_status` - Get implementation status overview
+- `kb_issues` - Get current known issues
+
+### Usage Examples
+
+- "Show me the current implementation status" → Uses `kb_status`
+- "What are the known issues?" → Uses `kb_issues`
+- "Update the roadmap with this milestone" → Uses `kb_update`
+- "Search for async implementation details" → Uses `kb_search`

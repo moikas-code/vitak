@@ -20,7 +20,11 @@ const navigation = [
   { name: "Diet Tracker Info", href: "/warfarin-diet-tracker", icon: BookOpen },
 ];
 
-export function MobileNav() {
+interface MobileNavProps {
+  isAuthenticated?: boolean;
+}
+
+export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -30,16 +34,18 @@ export function MobileNav() {
           variant="ghost"
           size="icon"
           className="md:hidden"
-          aria-label="Open menu"
+          aria-label="Open navigation menu"
+          aria-expanded={open}
+          aria-controls="mobile-navigation"
         >
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-[300px] sm:w-[350px]">
+      <SheetContent side="left" className="w-[300px] sm:w-[350px]" id="mobile-navigation" aria-label="Navigation menu">
         <SheetHeader>
           <SheetTitle>VitaK Tracker</SheetTitle>
         </SheetHeader>
-        <nav className="mt-6 flex flex-col gap-2">
+        <nav className="mt-6 flex flex-col gap-2" role="navigation">
           {navigation.map((item) => (
             <Link
               key={item.name}
@@ -53,16 +59,26 @@ export function MobileNav() {
           ))}
           
           <div className="mt-6 pt-6 border-t space-y-3">
-            <Link href="/auth/sign-up" onClick={() => setOpen(false)}>
-              <Button className="w-full">
-                Get Started Free
-              </Button>
-            </Link>
-            <Link href="/auth/sign-in" onClick={() => setOpen(false)}>
-              <Button variant="outline" className="w-full">
-                Sign In
-              </Button>
-            </Link>
+            {isAuthenticated ? (
+              <Link href="/dashboard" onClick={() => setOpen(false)}>
+                <Button className="w-full">
+                  Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link href="/auth/sign-up" onClick={() => setOpen(false)}>
+                  <Button className="w-full">
+                    Get Started Free
+                  </Button>
+                </Link>
+                <Link href="/auth/sign-in" onClick={() => setOpen(false)}>
+                  <Button variant="outline" className="w-full">
+                    Sign In
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </nav>
       </SheetContent>

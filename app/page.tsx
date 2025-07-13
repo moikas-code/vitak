@@ -5,11 +5,12 @@ import { Footer } from "@/components/ui/footer";
 import { MobileNav } from "@/components/ui/mobile-nav";
 import { Activity, Apple, Shield, TrendingUp, Download, Calculator, FileText } from "lucide-react";
 import { WebApplicationLD, MedicalWebPageLD, OrganizationLD, FAQLD } from "@/components/seo/json-ld";
+import { auth } from "@clerk/nextjs/server";
 
-export const dynamic = 'force-static';
 export const revalidate = 3600; // Revalidate every hour
 
-export default function HomePage() {
+export default async function HomePage() {
+  const session = await auth();
   return (
     <>
       <WebApplicationLD />
@@ -21,12 +22,23 @@ export default function HomePage() {
         <nav className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">VitaK Tracker</h1>
           <div className="flex items-center gap-4">
-            <div className="hidden md:block">
-              <Link href="/auth/sign-up">
-                <Button>Get Started</Button>
-              </Link>
+            <div className="hidden md:block gap-4">
+              {session?.userId ? (
+                <Link href="/dashboard">
+                  <Button>Dashboard</Button>
+                </Link>
+              ) : (
+                <>
+                  <Link href="/auth/sign-in" className={'md:mr-2'}>
+                    <Button>Login</Button>
+                  </Link>
+                  <Link href="/auth/sign-up">
+                    <Button>Get Started</Button>
+                  </Link>
+                </>
+              )}
             </div>
-            <MobileNav />
+            <MobileNav isAuthenticated={!!session?.userId} />
           </div>
         </nav>
       </header>
@@ -40,11 +52,19 @@ export default function HomePage() {
             VitaK Tracker helps warfarin patients maintain consistent Vitamin K intake
             through our research-based credit system and comprehensive USDA nutritional database.
           </p>
-          <Link href="/auth/sign-up">
-            <Button size="lg" className="text-lg px-8">
-              Start Tracking Today
-            </Button>
-          </Link>
+          {session?.userId ? (
+            <Link href="/dashboard">
+              <Button size="lg" className="text-lg px-8">
+                Go to Dashboard
+              </Button>
+            </Link>
+          ) : (
+            <Link href="/auth/sign-up">
+              <Button size="lg" className="text-lg px-8">
+                Start Tracking Today
+              </Button>
+            </Link>
+          )}
         </section>
 
         <section className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
@@ -204,11 +224,19 @@ export default function HomePage() {
             Tracker makes managing your Vitamin K intake simple and stress-free. Always consult
             your healthcare provider for personalized dietary guidance.
           </p>
-          <Link href="/auth/sign-up">
-            <Button size="lg" variant="secondary">
-              Create Your Account
-            </Button>
-          </Link>
+          {session?.userId ? (
+            <Link href="/dashboard">
+              <Button size="lg" variant="secondary">
+                Go to Dashboard
+              </Button>
+            </Link>
+          ) : (
+            <Link href="/auth/sign-up">
+              <Button size="lg" variant="secondary">
+                Create Your Account
+              </Button>
+            </Link>
+          )}
         </section>
       </main>
 

@@ -176,7 +176,31 @@ const nextConfig = {
     serverActions: {
       allowedOrigins: ['localhost:3000']
     }
-  }
+  },
+  // Enable compression for better performance
+  compress: true,
+  // Add security headers
+  async headers() {
+    return [
+      {
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+        ],
+      },
+    ];
+  },
 }
 
 module.exports = withPWA(nextConfig)

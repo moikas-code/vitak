@@ -2,9 +2,19 @@ import { headers } from "next/headers";
 import { Webhook } from "svix";
 import { WebhookEvent } from "@clerk/nextjs/server";
 import { supabaseServiceRole } from "@/lib/db/supabase-server";
+import { checkRateLimit, RateLimitError } from "@/lib/security/rate-limit-redis";
+import { API_RATE_LIMITS } from "@/lib/api/rate-limit";
 
 export async function POST(req: Request) {
-  console.log("[Clerk Webhook] Received webhook request");
+  // Apply rate limiting using service identifier
+  try {
+    await checkRateLimit('clerk_webhook_service', 'webhook', API_RATE_LIMITS.WEBHOOK);
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      return new Response("Rate limit exceeded", { status: 429 });
+    }
+    throw error;
+  }
   
   // Get the headers
   const headerPayload = await headers();
@@ -14,7 +24,6 @@ export async function POST(req: Request) {
 
   // If there are no headers, error out
   if (!svix_id || !svix_timestamp || !svix_signature) {
-    console.error("[Clerk Webhook] Missing svix headers");
     return new Response("Error occured -- no svix headers", {
       status: 400,
     });
@@ -22,9 +31,6 @@ export async function POST(req: Request) {
 
   // Check if webhook secret is configured
   if (!process.env.CLERK_WEBHOOK_SECRET) {
-    console.error("[Clerk Webhook] CLERK_WEBHOOK_SECRET is not configured in environment variables");
-    console.error("[Clerk Webhook] Please add CLERK_WEBHOOK_SECRET to your .env file");
-    console.error("[Clerk Webhook] You can find this in your Clerk Dashboard > Webhooks > Endpoint Details");
     return new Response("Webhook secret not configured", {
       status: 500,
     });
@@ -47,7 +53,6 @@ export async function POST(req: Request) {
       "svix-signature": svix_signature,
     }) as WebhookEvent;
   } catch (err) {
-    console.error("Error verifying webhook:", err);
     return new Response("Error occured", {
       status: 400,
     });
@@ -55,13 +60,15 @@ export async function POST(req: Request) {
 
   // Handle the webhook
   const eventType = evt.type;
-  console.log(`[Clerk Webhook] Received event: ${eventType}`, evt.data.id);
 
   if (eventType === "user.created" || eventType === "user.updated") {
-    const { id, email_addresses, username, first_name, last_name, image_url } = evt.data;
+    const { id, email_addresses, username, first_name, last_name, image_url, public_metadata } = evt.data;
     
     // Get primary email
     const primaryEmail = email_addresses?.find(email => email.id === evt.data.primary_email_address_id);
+    
+    // Get role from Clerk public metadata, default to 'user'
+    const role = (public_metadata?.role as string) || 'user';
     
     try {
       // Upsert user in database
@@ -80,11 +87,10 @@ export async function POST(req: Request) {
         });
 
       if (error) {
-        console.error("Error upserting user:", error);
         return new Response("Error updating user", { status: 500 });
       }
 
-      // Also ensure user_settings exist
+      // Also ensure user_settings exist with role
       const { error: settingsError } = await supabaseServiceRole
         .from("user_settings")
         .upsert({
@@ -93,19 +99,17 @@ export async function POST(req: Request) {
           weekly_limit: 700,
           monthly_limit: 3000,
           tracking_period: "daily",
+          role: role as "user" | "admin",
         }, {
           onConflict: "user_id",
           ignoreDuplicates: true,
         });
 
       if (settingsError && settingsError.code !== "23505") { // Ignore duplicate key errors
-        console.error("Error creating user settings:", settingsError);
+        return new Response("Error creating user settings", { status: 500 });
       }
 
-      console.log(`[Clerk Webhook] Successfully ${eventType === "user.created" ? "created" : "updated"} user: ${id}`);
-      console.log(`[Clerk Webhook] User email: ${primaryEmail?.email_address || 'No email'}`);
     } catch (error) {
-      console.error("Database error:", error);
       return new Response("Database error", { status: 500 });
     }
   }
@@ -116,7 +120,6 @@ export async function POST(req: Request) {
     try {
       // Soft delete or handle user deletion as needed
       // For now, we'll keep the data but you might want to implement a soft delete
-      console.log(`User deleted event received for: ${id}`);
       
       // Optional: Mark user as deleted instead of hard delete
       // const { error } = await supabaseAdmin
@@ -125,11 +128,9 @@ export async function POST(req: Request) {
       //   .eq("clerk_user_id", id);
       
     } catch (error) {
-      console.error("Error handling user deletion:", error);
       return new Response("Error handling deletion", { status: 500 });
     }
   }
 
-  console.log(`[Clerk Webhook] Webhook processed successfully for event: ${eventType}`);
   return new Response("", { status: 200 });
 }

@@ -1,42 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { Redis } from "@upstash/redis";
-import { check_rate_limit } from "@/lib/helpers/rate-limit";
+import { checkRateLimit, RateLimitError, RATE_LIMITS } from "@/lib/security/rate-limit-redis";
 
-// Only initialize Redis if environment variables are provided
-let redis: Redis | null = null;
-
-const redisUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-const redisToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-
-if (redisUrl && redisToken) {
-  redis = new Redis({
-    url: redisUrl,
-    token: redisToken,
-  });
-}
-
-// Simple in-memory rate limiting for development (when Redis is not available)
-const inMemoryRateLimit = new Map<string, { count: number; resetTime: number }>();
-
-function checkInMemoryRateLimit(identifier: string, limit: number = 10, windowSeconds: number = 60): boolean {
-  const now = Date.now();
-  const key = identifier;
-  const entry = inMemoryRateLimit.get(key);
-  
-  if (!entry || now > entry.resetTime) {
-    // First request or window expired
-    inMemoryRateLimit.set(key, { count: 1, resetTime: now + (windowSeconds * 1000) });
-    return true;
-  }
-  
-  if (entry.count >= limit) {
-    return false; // Rate limit exceeded
-  }
-  
-  entry.count++;
-  return true;
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -44,50 +9,23 @@ export async function POST(req: NextRequest) {
     const { userId } = await auth();
     
     // Apply rate limiting
-    let rateLimitPassed = true;
+    const identifier = userId || `ip_${req.headers.get("x-forwarded-for")?.split(",")[0] || req.headers.get("x-real-ip") || "unknown"}`;
     
-    if (redis) {
-      // Use Redis-based rate limiting in production
-      let rate;
-      
-      if (userId) {
-        // Authenticated user: rate limit by userId
-        rate = await check_rate_limit(redis, userId, 10, 60); // 10 feedbacks per minute
-      } else {
-        // Fallback to IP-based limiting
-        const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || 
-                   req.headers.get("x-real-ip") || 
-                   "unknown";
-        rate = await check_rate_limit(redis, `ip_${ip}`, 5, 60); // 5 per minute for anonymous
-      }
-      
-      rateLimitPassed = rate.allowed;
-      
-      if (!rateLimitPassed) {
+    try {
+      await checkRateLimit(identifier, 'feedback', RATE_LIMITS.FEEDBACK);
+    } catch (error) {
+      if (error instanceof RateLimitError) {
         return NextResponse.json(
           { error: "Rate limit exceeded. Try again soon." },
           {
             status: 429,
             headers: {
-              "X-RateLimit-Remaining": rate.remaining.toString(),
-              "X-RateLimit-Reset": rate.reset.toString(),
-            },
+              'Retry-After': String(Math.ceil((error.resetTime - Date.now()) / 1000)),
+            }
           }
         );
       }
-    } else {
-      // Use in-memory rate limiting for development
-      const identifier = userId || `ip_${req.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"}`;
-      const limit = userId ? 10 : 5; // 10 for authenticated, 5 for anonymous
-      
-      rateLimitPassed = checkInMemoryRateLimit(identifier, limit, 60);
-      
-      if (!rateLimitPassed) {
-        return NextResponse.json(
-          { error: "Rate limit exceeded. Try again soon." },
-          { status: 429 }
-        );
-      }
+      throw error;
     }
     
     if (!userId) {

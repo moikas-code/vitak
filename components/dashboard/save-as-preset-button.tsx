@@ -17,6 +17,8 @@ import { useToast } from "@/lib/hooks/use-toast";
 import { Bookmark, Loader2 } from "lucide-react";
 import type { Food } from "@/lib/types";
 import { useOfflineMealPresets } from "@/lib/offline/hooks";
+import { sanitizeText } from "@/lib/security/sanitize-html";
+import { validatePresetName } from "@/lib/security/input-validation";
 
 interface SaveAsPresetButtonProps {
   food: Food;
@@ -33,10 +35,11 @@ export function SaveAsPresetButton({ food, portion_size_g, onSuccess }: SaveAsPr
   const { addMealPreset } = useOfflineMealPresets();
 
   const handle_save = async () => {
-    if (!preset_name.trim()) {
+    const validation = validatePresetName(preset_name);
+    if (!validation.isValid) {
       toast({
         title: "Error",
-        description: "Please enter a name for your preset.",
+        description: validation.error,
         variant: "destructive",
       });
       return;
@@ -90,7 +93,7 @@ export function SaveAsPresetButton({ food, portion_size_g, onSuccess }: SaveAsPr
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="p-3 rounded-lg border bg-accent/50">
-            <div className="font-medium">{food.name}</div>
+            <div className="font-medium">{sanitizeText(food.name)}</div>
             <div className="text-sm text-muted-foreground">
               {portion_size_g}g • {vitamin_k_amount.toFixed(1)} mcg Vitamin K
             </div>

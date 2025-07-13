@@ -1,10 +1,12 @@
 "use client";
 
+import { memo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/lib/hooks/use-toast";
 import { Trash2, Plus, Loader2, Bookmark, WifiOff } from "lucide-react";
 import { useOfflineMealPresets, useConnectionStatus } from "@/lib/offline/hooks";
+import { sanitizeText } from "@/lib/security/sanitize-html";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,8 +17,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useState } from "react";
 import { track_meal_event } from "@/lib/analytics";
+import { getVitaminKColor, getVitaminKLevel, VITAMIN_K_THRESHOLDS } from "@/lib/config/constants";
 
 export function MealPresets() {
   const { toast } = useToast();
@@ -50,7 +52,7 @@ export function MealPresets() {
       if (preset) {
         track_meal_event('saved', {
           food_category: preset.food?.category,
-          vitamin_k_amount: preset.vitamin_k_mcg > 50 ? 'high' : preset.vitamin_k_mcg > 20 ? 'medium' : 'low'
+          vitamin_k_amount: getVitaminKLevel(preset.vitamin_k_mcg)
         });
       }
       toast({
@@ -68,11 +70,6 @@ export function MealPresets() {
     }
   };
 
-  const get_vitamin_k_color = (mcg: number) => {
-    if (mcg > 50) return "text-red-600";
-    if (mcg > 20) return "text-yellow-600";
-    return "text-green-600";
-  };
 
   if (isLoading) {
     return (
@@ -106,14 +103,14 @@ export function MealPresets() {
           <Card key={preset.id} className="p-4">
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
-                <h4 className="font-medium truncate">{preset.name}</h4>
+                <h4 className="font-medium truncate">{sanitizeText(preset.name)}</h4>
                 <p className="text-sm text-muted-foreground truncate">
-                  {preset.food?.name || "Unknown Food"}
+                  {sanitizeText(preset.food?.name) || "Unknown Food"}
                 </p>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-sm">{preset.portion_size_g}g</span>
                   <span className="text-sm">•</span>
-                  <span className={`text-sm font-medium ${get_vitamin_k_color(preset.vitamin_k_mcg)}`}>
+                  <span className={`text-sm font-medium ${getVitaminKColor(preset.vitamin_k_mcg)}`}>
                     {preset.vitamin_k_mcg.toFixed(1)} mcg
                   </span>
                 </div>

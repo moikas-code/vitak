@@ -1,5 +1,9 @@
 import { OfflineStorageService } from './storage-service';
 import { api } from '@/lib/trpc/provider';
+import { createLogger } from '@/lib/logger';
+import { useEffect } from 'react';
+
+const logger = createLogger('food-cache');
 
 /**
  * Pre-populates the food cache with common foods for offline use
@@ -8,7 +12,7 @@ export async function populateFoodCache() {
   const storage = OfflineStorageService.getInstance();
   
   try {
-    console.log('[FoodCache] Starting food cache population...');
+    logger.info('Starting food cache population...');
     
     // Try to fetch common foods from the server
     const response = await fetch('/api/trpc/food.getCommonFoods', {
@@ -22,21 +26,21 @@ export async function populateFoodCache() {
       const data = await response.json();
       const foods = data?.result?.data?.json || [];
       
-      console.log(`[FoodCache] Caching ${foods.length} common foods`);
+      logger.info('Caching common foods', { count: foods.length });
       
       // Cache each food
       for (const food of foods) {
         await storage.cacheFood(food);
       }
       
-      console.log('[FoodCache] Food cache populated successfully');
+      logger.info('Food cache populated successfully');
       return true;
     } else {
-      console.warn('[FoodCache] Failed to fetch common foods:', response.status);
+      logger.warn('Failed to fetch common foods', { status: response.status });
       return false;
     }
   } catch (error) {
-    console.error('[FoodCache] Error populating food cache:', error);
+    logger.error('Error populating food cache', error);
     return false;
   }
 }
@@ -58,13 +62,10 @@ export function useFoodCachePopulation() {
       Promise.all(
         common_foods.map(food => storage.cacheFood(food))
       ).then(() => {
-        console.log('[FoodCache] Cached', common_foods.length, 'common foods');
+        logger.info('Cached common foods', { count: common_foods.length });
       }).catch(error => {
-        console.error('[FoodCache] Error caching foods:', error);
+        logger.error('Error caching foods', error);
       });
     }
   }, [common_foods]);
 }
-
-// Import for useEffect
-import { useEffect } from 'react';

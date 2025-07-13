@@ -14,6 +14,9 @@ import type { Food } from "@/lib/types";
 import { track_meal_event, track_search_event } from "@/lib/analytics";
 import { SaveAsPresetButton } from "./save-as-preset-button";
 import { useOfflineMealLogs, useOfflineFoodSearch, useConnectionStatus } from "@/lib/offline/hooks";
+import { sanitizeText } from "@/lib/security/sanitize-html";
+import { sanitizeSearchQuery } from "@/lib/security/input-validation";
+import { useDebounce } from "@/lib/hooks/use-debounce";
 
 const add_meal_schema = z.object({
   food_id: z.string().min(1, "Please select a food"),
@@ -28,8 +31,11 @@ export function QuickAdd() {
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Use offline-capable hooks
-  const { foods, is_loading } = useOfflineFoodSearch(search);
+  // Debounce search to reduce API calls
+  const debouncedSearch = useDebounce(search, 300);
+  
+  // Use offline-capable hooks with sanitized and debounced search
+  const { foods, is_loading } = useOfflineFoodSearch(sanitizeSearchQuery(debouncedSearch));
   const { addMealLog } = useOfflineMealLogs();
   const { is_online, unsynced_count } = useConnectionStatus();
   
@@ -147,11 +153,11 @@ export function QuickAdd() {
               onClick={() => selectFood(food)}
               className="w-full text-left p-3 rounded-lg border hover:bg-accent transition-colors"
             >
-              <div className="font-medium">{food.name}</div>
+              <div className="font-medium">{sanitizeText(food.name)}</div>
               <div className="text-sm text-muted-foreground">
                 <div>{food.vitamin_k_mcg_per_100g} mcg per 100g</div>
                 <div className="text-xs">
-                  {food.common_portion_name} ({food.common_portion_size_g}g): {((food.vitamin_k_mcg_per_100g * food.common_portion_size_g) / 100).toFixed(1)} mcg
+                  {sanitizeText(food.common_portion_name)} ({food.common_portion_size_g}g): {((food.vitamin_k_mcg_per_100g * food.common_portion_size_g) / 100).toFixed(1)} mcg
                 </div>
               </div>
             </button>
@@ -162,11 +168,11 @@ export function QuickAdd() {
       {selectedFood && (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="p-3 rounded-lg border bg-accent/50">
-            <div className="font-medium">{selectedFood.name}</div>
+            <div className="font-medium">{sanitizeText(selectedFood.name)}</div>
             <div className="text-sm text-muted-foreground">
               <div>{selectedFood.vitamin_k_mcg_per_100g} mcg per 100g</div>
               <div className="text-xs">
-                Common portion: {selectedFood.common_portion_name} ({selectedFood.common_portion_size_g}g)
+                Common portion: {sanitizeText(selectedFood.common_portion_name)} ({selectedFood.common_portion_size_g}g)
               </div>
             </div>
           </div>
@@ -181,7 +187,7 @@ export function QuickAdd() {
                 onClick={() => setValue("portion_size_g", selectedFood.common_portion_size_g)}
                 className="text-xs"
               >
-                Use {selectedFood.common_portion_name}
+                Use {sanitizeText(selectedFood.common_portion_name)}
               </Button>
             </div>
             <Input
@@ -198,7 +204,7 @@ export function QuickAdd() {
             )}
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">
-                {selectedFood.common_portion_name} = {selectedFood.common_portion_size_g}g
+                {sanitizeText(selectedFood.common_portion_name)} = {selectedFood.common_portion_size_g}g
               </p>
               {watch("portion_size_g") && (
                 <p className="text-sm font-medium text-primary">

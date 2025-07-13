@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { auth } from "@clerk/nextjs/server";
+import { withRateLimit, API_RATE_LIMITS } from "@/lib/api/rate-limit";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error("Missing STRIPE_SECRET_KEY");
@@ -22,7 +23,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { amount } = await req.json();
+    // Apply rate limiting
+    return await withRateLimit(
+      req,
+      session.userId,
+      'stripe_checkout',
+      API_RATE_LIMITS.STRIPE_CHECKOUT,
+      async () => {
+        const { amount } = await req.json();
 
     // Validate amount (in cents)
     if (!amount || typeof amount !== "number" || amount < 100) {
@@ -75,6 +83,8 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ sessionId: checkoutSession.id });
+      }
+    );
   } catch (error) {
     console.error("Stripe checkout error:", error);
     return NextResponse.json(

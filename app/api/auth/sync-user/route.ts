@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { supabaseServiceRole } from "@/lib/db/supabase-server";
+import { withRateLimit, API_RATE_LIMITS } from "@/lib/api/rate-limit";
+import { sanitizeEmail, sanitizeUsername, sanitizeText, sanitizeUrl } from "@/lib/security/sanitize";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger('auth-sync');
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,6 +19,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Apply rate limiting
+    return await withRateLimit(
+      req,
+      session.userId,
+      'auth_sync',
+      API_RATE_LIMITS.AUTH_SYNC,
+      async () => {
+
     // Parse request body
     const body = await req.json();
     const { clerk_user_id, email, username, first_name, last_name, image_url } = body;
@@ -26,27 +39,30 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log(`[Sync User] Syncing user: ${clerk_user_id}`);
+    logger.info('Syncing user', { userId: clerk_user_id });
+
+    // Sanitize user inputs
+    const sanitizedData = {
+      clerk_user_id, // Don't sanitize Clerk ID as it's system-generated
+      email: sanitizeEmail(email),
+      username: username ? sanitizeUsername(username) : null,
+      first_name: first_name ? sanitizeText(first_name) : null,
+      last_name: last_name ? sanitizeText(last_name) : null,
+      image_url: image_url ? sanitizeUrl(image_url) : null,
+      updated_at: new Date().toISOString(),
+    };
 
     // Upsert user in database
     const { data: userData, error: userError } = await supabaseServiceRole
       .from("users")
-      .upsert({
-        clerk_user_id,
-        email,
-        username,
-        first_name,
-        last_name,
-        image_url,
-        updated_at: new Date().toISOString(),
-      }, {
+      .upsert(sanitizedData, {
         onConflict: "clerk_user_id",
       })
       .select()
       .single();
 
     if (userError) {
-      console.error("[Sync User] Error upserting user:", userError);
+      logger.error('Error upserting user', userError, { userId: clerk_user_id });
       return NextResponse.json(
         { error: "Failed to sync user", details: userError.message },
         { status: 500 }
@@ -73,15 +89,15 @@ export async function POST(req: NextRequest) {
         });
 
       if (createSettingsError) {
-        console.error("[Sync User] Error creating user settings:", createSettingsError);
+        logger.error('Error creating user settings', createSettingsError, { userId: clerk_user_id });
         // Don't fail the whole sync if settings creation fails
         // User can still use the app and settings will be created on first access
       } else {
-        console.log(`[Sync User] Created default settings for user: ${clerk_user_id}`);
+        logger.info('Created default settings for user', { userId: clerk_user_id });
       }
     }
 
-    console.log(`[Sync User] Successfully synced user: ${clerk_user_id}`);
+    logger.info('Successfully synced user', { userId: clerk_user_id });
 
     return NextResponse.json({
       success: true,
@@ -89,9 +105,10 @@ export async function POST(req: NextRequest) {
       clerk_user_id: userData.clerk_user_id,
       message: "User synced successfully"
     });
-
+      }
+    );
   } catch (error) {
-    console.error("[Sync User] Unexpected error:", error);
+    logger.error('Unexpected error during sync', error);
     return NextResponse.json(
       { 
         error: "Unexpected error during sync", 

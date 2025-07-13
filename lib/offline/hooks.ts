@@ -5,7 +5,10 @@ import { OfflineStorageService } from './storage-service';
 import { SyncManager } from './sync-manager';
 import { OfflineInitManager } from './init-manager';
 import { TokenStorageService } from './token-storage';
+import { createLogger } from '@/lib/logger';
 import type { MealLog, Food, UserSettings, MealLogWithFood, MealPreset, MealPresetWithFood } from '@/lib/types';
+
+const logger = createLogger('offline-hooks');
 
 // Initialize offline services when user is logged in
 export function useOfflineInit() {
@@ -93,7 +96,7 @@ export function useOfflineMealLogs() {
         setMealLogs(enriched_logs);
       }
     } catch (error) {
-      console.error('Failed to load meal logs:', error);
+      logger.error('Failed to load meal logs', error);
       // If local storage fails, fall back to server data if available
       if (server_query.data && !server_query.isError) {
         setMealLogs(server_query.data);
@@ -106,7 +109,7 @@ export function useOfflineMealLogs() {
   const addMealLog = async (food_id: string, portion_size_g: number) => {
     if (!user) return;
     
-    console.log('[MealLog] Adding meal log for food:', food_id, 'portion:', portion_size_g);
+    logger.info('Adding meal log', { food_id, portion_size_g });
     
     // Calculate vitamin K consumed
     const food = await storage.getCachedFoods().then(foods => 
@@ -114,7 +117,7 @@ export function useOfflineMealLogs() {
     );
     
     if (!food) {
-      console.error('[MealLog] Food not found:', food_id);
+      logger.error('Food not found', undefined, { food_id });
       throw new Error('Food not found');
     }
     
@@ -130,11 +133,11 @@ export function useOfflineMealLogs() {
       created_at: new Date(),
     };
     
-    console.log('[MealLog] Created new meal log:', new_log);
+    logger.info('Created new meal log', { id: new_log.id, food_id: new_log.food_id });
     
     // Add to local storage
     await storage.addMealLog(new_log, user.id);
-    console.log('[MealLog] Saved to local storage');
+    logger.info('Saved meal log to local storage');
     
     // Update UI immediately with food data
     const enriched_log: MealLogWithFood = {
@@ -142,22 +145,22 @@ export function useOfflineMealLogs() {
       food
     };
     setMealLogs(prev => [enriched_log, ...prev]);
-    console.log('[MealLog] Updated UI with new log');
+    logger.info('Updated UI with new log');
     
     // Try to sync if online
     const is_online = typeof window !== 'undefined' && navigator.onLine;
-    console.log('[MealLog] Online status:', is_online);
+    logger.info('Online status check', { is_online });
     
     if (is_online) {
-      console.log('[MealLog] Triggering sync...');
+      logger.info('Triggering sync...');
       try {
         await SyncManager.getInstance().forceSync();
-        console.log('[MealLog] Sync completed');
+        logger.info('Sync completed');
       } catch (error) {
-        console.error('[MealLog] Sync failed:', error);
+        logger.error('Sync failed', error);
       }
     } else {
-      console.log('[MealLog] Offline - sync will happen when connection is restored');
+      logger.info('Offline - sync will happen when connection is restored');
     }
   };
   
@@ -223,7 +226,7 @@ export function useOfflineFoodSearch(search: string) {
         setFoods(cached);
       }
     } catch (error) {
-      console.error('Failed to load foods:', error);
+      logger.error('Failed to load foods', error);
     } finally {
       setIsLoading(false);
     }
@@ -271,7 +274,7 @@ export function useOfflineUserSettings() {
         setSettings(local_settings);
       }
     } catch (error) {
-      console.error('Failed to load settings:', error);
+      logger.error('Failed to load settings', error);
     } finally {
       setIsLoading(false);
     }
@@ -411,7 +414,7 @@ export function useTokenRefresh() {
           await TokenStorageService.getInstance().storeToken(token);
         }
       } catch (error) {
-        console.warn('Failed to refresh token:', error);
+        logger.warn('Failed to refresh token', { error });
       }
     };
     
@@ -478,7 +481,7 @@ export function useOfflineMealPresets() {
       
       setMealPresets(enriched_presets);
     } catch (error) {
-      console.error('Failed to load meal presets:', error);
+      logger.error('Failed to load meal presets', error);
     } finally {
       setIsLoading(false);
     }

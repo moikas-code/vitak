@@ -3,10 +3,17 @@ import { auth } from "@clerk/nextjs/server";
 import { verifyToken } from '@clerk/backend';
 import superjson from "superjson";
 import { ZodError } from "zod";
+import { supabaseServiceRole } from "@/lib/db/supabase-server";
+import type { UserRole } from "@/lib/db/types";
+import { randomUUID } from "crypto";
 
 export const createTRPCContext = async (opts: { headers: Headers }) => {
+  // Generate or extract correlation ID
+  const correlationId = opts.headers.get('x-correlation-id') || randomUUID();
+  
   // First try standard Clerk auth (cookie-based)
   let session = await auth();
+  let userRole: UserRole | null = null;
   
   // If no session from cookies, check for Bearer token
   if (!session?.userId) {
@@ -36,8 +43,21 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
     }
   }
   
+  // Fetch user role if authenticated
+  if (session?.userId) {
+    const { data } = await supabaseServiceRole
+      .from("user_settings")
+      .select("role")
+      .eq("user_id", session.userId)
+      .single();
+    
+    userRole = data?.role || null;
+  }
+  
   return {
     session,
+    userRole,
+    correlationId,
     ...opts,
   };
 };
@@ -69,8 +89,32 @@ const enforceUserIsAuthed = t.middleware(({ ctx, next }) => {
   return next({
     ctx: {
       session: { ...ctx.session, userId: ctx.session.userId },
+      userRole: ctx.userRole,
+      correlationId: ctx.correlationId,
+    },
+  });
+});
+
+const enforceUserIsAdmin = t.middleware(({ ctx, next }) => {
+  if (!ctx.session?.userId) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+  
+  if (ctx.userRole !== "admin") {
+    throw new TRPCError({ 
+      code: "FORBIDDEN",
+      message: "Admin access required"
+    });
+  }
+  
+  return next({
+    ctx: {
+      session: { ...ctx.session, userId: ctx.session.userId },
+      userRole: ctx.userRole,
+      correlationId: ctx.correlationId,
     },
   });
 });
 
 export const protectedProcedure = t.procedure.use(enforceUserIsAuthed);
+export const adminProcedure = t.procedure.use(enforceUserIsAdmin);

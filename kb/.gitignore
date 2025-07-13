@@ -1,0 +1,17 @@
+# KB-specific gitignore
+
+# Ignore personal notes or drafts
+personal/
+drafts/
+*.draft.md
+
+# Ignore temporary files
+*.tmp
+*.swp
+.DS_Store
+
+# Ignore any sensitive information
+*-secrets.md
+*-credentials.md
+
+# Keep everything else - documentation should be shared!

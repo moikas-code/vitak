@@ -2,9 +2,13 @@ import { get_offline_db, type VitaKOfflineDB } from './database';
 import { encrypt_data, decrypt_data, get_stored_encryption_key } from './encryption';
 import { OfflineInitManager } from './init-manager';
 import type { MealLog, Food, UserSettings, MealPreset } from '@/lib/types';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('offline-storage');
 
 export class OfflineStorageService {
   private static instance: OfflineStorageService;
+  private current_user_id: string | null = null;
   
   private constructor() {}
   
@@ -21,11 +25,17 @@ export class OfflineStorageService {
     if (!is_initialized) {
       throw new Error('Failed to initialize offline storage');
     }
+    // Store current user ID for later use
+    this.current_user_id = user_id;
+  }
+  
+  getCurrentUserId(): string | null {
+    return this.current_user_id;
   }
   
   // Meal Logs Operations
   async addMealLog(meal_log: MealLog, user_id: string): Promise<void> {
-    console.log('[Storage] Adding meal log:', meal_log);
+    logger.info('Adding meal log:', { mealLog: meal_log });
     
     try {
       await this.ensureInitialized(user_id);
@@ -34,7 +44,7 @@ export class OfflineStorageService {
       const encryption_key = get_stored_encryption_key();
       
       if (!encryption_key) {
-        console.error('[Storage] No encryption key available');
+        logger.error('No encryption key available');
         throw new Error('No encryption key available');
       }
       
@@ -48,13 +58,13 @@ export class OfflineStorageService {
         encrypted_data,
       });
       
-      console.log('[Storage] Meal log saved to IndexedDB');
+      logger.info('Meal log saved to IndexedDB');
       
       // Add to sync queue
       await this.addToSyncQueue('meal_log', 'create', meal_log);
-      console.log('[Storage] Meal log added to sync queue');
+      logger.info('Meal log added to sync queue');
     } catch (error) {
-      console.error('[Storage] Failed to add meal log:', error);
+      logger.error('Failed to add meal log:', { error });
       
       // Handle specific IndexedDB errors
       if (error instanceof Error) {
@@ -123,7 +133,7 @@ export class OfflineStorageService {
     const db = await get_offline_db();
     const all_foods = await db.getAll('foods');
     
-    console.log('[Storage] Found', all_foods.length, 'cached foods', search ? `for search: "${search}"` : '');
+    logger.info('Found cached foods', { count: all_foods.length, search: search || 'no filter' });
     
     if (!search) {
       const foods = all_foods.map(f => {
@@ -131,7 +141,7 @@ export class OfflineStorageService {
         const { last_accessed, is_cached, ...food } = f;
         return food as Food;
       });
-      console.log('[Storage] Returning', foods.length, 'foods without search filter');
+      logger.info('Returning foods without search filter', { count: foods.length });
       return foods;
     }
     
@@ -249,7 +259,7 @@ export class OfflineStorageService {
     operation: 'create' | 'update' | 'delete',
     data: MealLog | UserSettings | MealPreset
   ): Promise<void> {
-    console.log('[Storage] Adding to sync queue:', type, operation);
+    logger.info('Adding to sync queue:', { type, operation });
     const db = await get_offline_db();
     
     const sync_item = {
@@ -262,7 +272,7 @@ export class OfflineStorageService {
     };
     
     await db.add('sync_queue', sync_item);
-    console.log('[Storage] Added to sync queue:', sync_item.id);
+    logger.info('Added to sync queue:', { itemId: sync_item.id });
   }
   
   async getSyncQueue(): Promise<VitaKOfflineDB['sync_queue']['value'][]> {
@@ -319,7 +329,7 @@ export class OfflineStorageService {
       // Add the updated record with server ID
       await db.put('meal_logs', meal_log);
       
-      console.log('[Storage] Updated meal log with server ID:', server_id);
+      logger.info('Updated meal log with server ID:', { serverId: server_id });
     }
   }
   
@@ -343,13 +353,13 @@ export class OfflineStorageService {
         last_modified: new Date(),
         encrypted_data,
       });
-      console.log('[Storage] Updated meal log from server:', server_meal_log.id);
+      logger.info('Updated meal log from server:', { mealLogId: server_meal_log.id });
     }
   }
   
   async updateMealPresetWithServerId(local_id: string, server_id: string): Promise<void> {
     if (!server_id || typeof server_id !== 'string') {
-      console.error('[Storage] Invalid server ID for meal preset:', server_id);
+      logger.error('Invalid server ID for meal preset:', { serverId: server_id });
       throw new Error('Invalid server ID provided for meal preset update');
     }
     
@@ -369,13 +379,13 @@ export class OfflineStorageService {
         // Add the updated record with server ID
         await db.put('meal_presets', preset);
         
-        console.log('[Storage] Updated meal preset with server ID:', server_id);
+        logger.info('Updated meal preset with server ID:', { serverId: server_id });
       } catch (error) {
-        console.error('[Storage] Failed to update meal preset with server ID:', error);
+        logger.error('Failed to update meal preset with server ID:', { error });
         throw new Error('Failed to update meal preset in IndexedDB');
       }
     } else {
-      console.warn('[Storage] Meal preset not found for update:', local_id);
+      logger.warn('Meal preset not found for update:', { localId: local_id });
     }
   }
   

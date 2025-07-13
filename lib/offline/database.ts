@@ -1,5 +1,8 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import type { MealLog, Food, UserSettings, MealPreset } from '@/lib/types';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('offline-db');
 
 export interface VitaKOfflineDB extends DBSchema {
   meal_logs: {
@@ -71,9 +74,13 @@ export interface VitaKOfflineDB extends DBSchema {
     key: string;
     value: {
       id: string;
-      token: string;
+      token?: string; // Plain token for v1
+      encrypted_token?: string; // Encrypted token for v2
+      salt?: string; // Salt for v2
+      iv?: string; // IV for v2
       stored_at: Date;
       expires_at: Date;
+      version?: number; // Version to track migration
     };
   };
 }
@@ -89,7 +96,7 @@ export async function init_offline_database(): Promise<IDBPDatabase<VitaKOffline
   
   // If initialization is already in progress, wait for it
   if (db_init_promise) {
-    console.log('[Database] Initialization already in progress, waiting...');
+    logger.info('[Database] Initialization already in progress, waiting...');
     return db_init_promise;
   }
   
@@ -107,7 +114,7 @@ export async function init_offline_database(): Promise<IDBPDatabase<VitaKOffline
 
 async function initializeDatabase(): Promise<IDBPDatabase<VitaKOfflineDB>> {
   try {
-    console.log('[Database] Starting database initialization...');
+    logger.info('[Database] Starting database initialization...');
     
     const db = await openDB<VitaKOfflineDB>(DB_NAME, DB_VERSION, {
       upgrade(db) {
@@ -150,7 +157,7 @@ async function initializeDatabase(): Promise<IDBPDatabase<VitaKOfflineDB>> {
         }
       },
       blocked(currentVersion, blockedVersion, event) {
-        console.warn('[Database] Database blocked by another connection', { currentVersion, blockedVersion });
+        logger.warn('Database blocked by another connection', { currentVersion, blockedVersion });
         
         // Instead of throwing immediately, wait a bit and try to close other connections
         const target = event.target as IDBOpenDBRequest;
@@ -162,7 +169,7 @@ async function initializeDatabase(): Promise<IDBPDatabase<VitaKOfflineDB>> {
           }, 10000); // 10 second timeout
           
           target.addEventListener('success', () => {
-            console.log('[Database] Block cleared, database opened successfully');
+            logger.info('[Database] Block cleared, database opened successfully');
             clearTimeout(timeout);
             resolve(target.result);
           });
@@ -174,26 +181,26 @@ async function initializeDatabase(): Promise<IDBPDatabase<VitaKOfflineDB>> {
         });
       },
       blocking(currentVersion, blockedVersion, _event) {
-        console.warn('[Database] This connection is blocking another', { currentVersion, blockedVersion });
+        logger.warn('This connection is blocking another', { currentVersion, blockedVersion });
         // Close the database to unblock other connections
         if (db_instance) {
-          console.log('[Database] Closing database to unblock other connections');
+          logger.info('[Database] Closing database to unblock other connections');
           db_instance.close();
           db_instance = null;
         }
       },
       terminated() {
-        console.error('[Database] Database connection terminated unexpectedly');
+        logger.error('[Database] Database connection terminated unexpectedly');
         db_instance = null;
         db_init_promise = null;
         throw new Error('Database connection was terminated. Please refresh the page.');
       },
     });
     
-    console.log('[Database] Successfully initialized offline database');
+    logger.info('[Database] Successfully initialized offline database');
     return db;
   } catch (error) {
-    console.error('[Database] Failed to initialize offline database:', error);
+    logger.error('[Database] Failed to initialize offline database:', error);
     db_instance = null;
     db_init_promise = null;
     

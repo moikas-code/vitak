@@ -3,6 +3,7 @@ import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 import { food_category_schema } from "@/lib/types";
 import { createSupabaseClientWithUser, createPublicSupabaseClient } from "@/lib/db/supabase-with-user";
 import { TRPCError } from "@trpc/server";
+import { checkRateLimit, RateLimitError, RATE_LIMITS } from "@/lib/security/rate-limit-redis";
 
 export const foodRouter = createTRPCRouter({
   search: protectedProcedure
@@ -17,6 +18,19 @@ export const foodRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
+      // Check rate limit
+      try {
+        await checkRateLimit(ctx.session.userId, "food_search", RATE_LIMITS.FOOD_SEARCH);
+      } catch (error) {
+        if (error instanceof RateLimitError) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: "Rate limit exceeded. Please try again later.",
+          });
+        }
+        throw error;
+      }
+      
       const supabase = createSupabaseClientWithUser(ctx.session.userId);
       let query = supabase
         .from("foods")
@@ -91,28 +105,7 @@ export const foodRouter = createTRPCRouter({
     const { data, error } = await supabase
       .from("foods")
       .select("*")
-      .or(`
-        name.ilike.%spinach%,
-        name.ilike.%kale%,
-        name.ilike.%broccoli%,
-        name.ilike.%lettuce%,
-        name.ilike.%cabbage%,
-        name.ilike.%chicken%,
-        name.ilike.%beef%,
-        name.ilike.%salmon%,
-        name.ilike.%egg%,
-        name.ilike.%milk%,
-        name.ilike.%rice%,
-        name.ilike.%bread%,
-        name.ilike.%potato%,
-        name.ilike.%tomato%,
-        name.ilike.%carrot%,
-        name.ilike.%apple%,
-        name.ilike.%banana%,
-        name.ilike.%cheese%,
-        name.ilike.%yogurt%,
-        name.ilike.%pasta%
-      `)
+      .or(`name.ilike.%spinach%,name.ilike.%kale%,name.ilike.%broccoli%,name.ilike.%lettuce%,name.ilike.%cabbage%,name.ilike.%chicken%,name.ilike.%beef%,name.ilike.%salmon%,name.ilike.%egg%,name.ilike.%milk%,name.ilike.%rice%,name.ilike.%bread%,name.ilike.%potato%,name.ilike.%tomato%,name.ilike.%carrot%,name.ilike.%apple%,name.ilike.%banana%,name.ilike.%cheese%,name.ilike.%yogurt%,name.ilike.%pasta%`)
       .limit(100)
       .order("name");
     

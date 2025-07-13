@@ -1,22 +1,64 @@
 import { createClient } from "@supabase/supabase-js";
 import { supabaseServiceRole } from "./supabase-server";
+import { createLogger } from "@/lib/logger";
+import { auth } from "@clerk/nextjs/server";
+
+const logger = createLogger('supabase-user');
 
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
   throw new Error("Missing env.NEXT_PUBLIC_SUPABASE_URL");
+}
+if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  throw new Error("Missing env.NEXT_PUBLIC_SUPABASE_ANON_KEY");
 }
 if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error("Missing env.SUPABASE_SERVICE_ROLE_KEY");
 }
 
 /**
- * Create a Supabase client for authenticated operations
- * Uses service role key since we handle authentication at the tRPC layer
- * @param _userId - The Clerk user ID (kept for compatibility, not used with service role)
- * @returns Supabase client with service role access
+ * Create a Supabase client for authenticated operations with proper RLS
+ * Uses user-scoped authentication with Clerk JWT
+ * @param userId - The Clerk user ID 
+ * @returns Supabase client with user-scoped access
  */
-export function createSupabaseClientWithUser(_userId: string) {
-  // Use service role key since we enforce security at the application layer
-  // This bypasses RLS which isn't properly integrated with Clerk
+export async function createSupabaseClientWithUser(userId: string) {
+  // Get Clerk session token for the authenticated user
+  const { getToken } = await auth();
+  const token = await getToken({ template: "supabase" });
+  
+  if (!token) {
+    logger.warn('No Clerk token available for user', { userId: userId.substring(0, 8) + '...' });
+    // Fallback to anon client with limited access
+    return createPublicSupabaseClient();
+  }
+
+  // Create user-scoped client that respects RLS policies
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    }
+  );
+
+  return supabase;
+}
+
+/**
+ * LEGACY: Service role version for gradual migration
+ * @deprecated Use createSupabaseClientWithUser instead
+ */
+export function createSupabaseClientWithUserLegacy(_userId: string) {
+  logger.warn('Using legacy service role client - should migrate to user-scoped');
+  
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -65,7 +107,7 @@ export function createPublicSupabaseClient() {
 export async function createDefaultUserSettings(userId: string) {
   try {
     // First, ensure the user exists in the users table and get their UUID
-    console.log('[createDefaultUserSettings] Ensuring user exists for:', userId);
+    logger.info('[createDefaultUserSettings] Ensuring user exists for:', { userId });
     
     // Use the database function to get or create user
     const { data: userData, error: userError } = await supabaseServiceRole
@@ -74,12 +116,12 @@ export async function createDefaultUserSettings(userId: string) {
       });
       
     if (userError || !userData) {
-      console.error('[createDefaultUserSettings] Failed to get/create user:', userError);
+      logger.error('[createDefaultUserSettings] Failed to get/create user:', { error: userError });
       return null;
     }
     
     const userUuid = userData;
-    console.log('[createDefaultUserSettings] Got user UUID:', userUuid);
+    logger.info('[createDefaultUserSettings] Got user UUID:', { userUuid });
     
     // Now create the settings with both user_id and user_uuid
     const default_settings = {
@@ -98,14 +140,14 @@ export async function createDefaultUserSettings(userId: string) {
       .single();
       
     if (error) {
-      console.error('[createDefaultUserSettings] Error creating settings:', error);
+      logger.error('[createDefaultUserSettings] Error creating settings:', { error });
       return null;
     }
     
-    console.log('[createDefaultUserSettings] Successfully created settings for user:', userId);
+    logger.info('[createDefaultUserSettings] Successfully created settings for user:', { userId });
     return data;
   } catch (error) {
-    console.error('[createDefaultUserSettings] Unexpected error:', error);
+    logger.error('[createDefaultUserSettings] Unexpected error:', { error });
     return null;
   }
 }
