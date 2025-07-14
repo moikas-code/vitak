@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       "svix-timestamp": svix_timestamp,
       "svix-signature": svix_signature,
     }) as WebhookEvent;
-  } catch (err) {
+  } catch {
     return new Response("Error occured", {
       status: 400,
     });
@@ -109,14 +109,12 @@ export async function POST(req: Request) {
         return new Response("Error creating user settings", { status: 500 });
       }
 
-    } catch (error) {
+    } catch {
       return new Response("Database error", { status: 500 });
     }
   }
 
   if (eventType === "user.deleted") {
-    const { id } = evt.data;
-    
     try {
       // Soft delete or handle user deletion as needed
       // For now, we'll keep the data but you might want to implement a soft delete
@@ -127,7 +125,7 @@ export async function POST(req: Request) {
       //   .update({ deleted_at: new Date().toISOString() })
       //   .eq("clerk_user_id", id);
       
-    } catch (error) {
+    } catch {
       return new Response("Error handling deletion", { status: 500 });
     }
   }
