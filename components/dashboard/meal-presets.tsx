@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/lib/hooks/use-toast";
@@ -18,7 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { track_meal_event } from "@/lib/analytics";
-import { getVitaminKColor, getVitaminKLevel, VITAMIN_K_THRESHOLDS } from "@/lib/config/constants";
+import { getVitaminKColor, getVitaminKLevel } from "@/lib/config/constants";
 
 export function MealPresets() {
   const { toast } = useToast();

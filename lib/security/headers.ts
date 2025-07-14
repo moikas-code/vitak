@@ -81,7 +81,7 @@ export function createSecureResponse(
  * Security headers for JSON API responses
  */
 export function jsonResponseWithHeaders(
-  data: any,
+  data: unknown,
   init?: ResponseInit,
   securityOptions?: { includeHSTS?: boolean; includeCSP?: boolean }
 ): Response {

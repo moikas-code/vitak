@@ -1,4 +1,19 @@
 export type UserRole = "user" | "admin";
+export type FoodCategory = "vegetables" | "fruits" | "proteins" | "grains" | "dairy" | "fats_oils" | "beverages" | "other";
+
+export interface AuditLogChangeData {
+  id?: string;
+  name?: string;
+  vitamin_k_mcg_per_100g?: number;
+  category?: FoodCategory;
+  common_portion_size_g?: number;
+  common_portion_name?: string;
+  created_by?: string | null;
+  updated_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: unknown; // Allow additional properties
+}
 
 export type Database = {
   public: {
@@ -83,8 +98,8 @@ export type Database = {
           action: "create" | "update" | "delete";
           changed_by: string;
           changed_at: string;
-          old_values: any | null;
-          new_values: any | null;
+          old_values: AuditLogChangeData | null;
+          new_values: AuditLogChangeData | null;
           ip_address: string | null;
           user_agent: string | null;
         };
@@ -94,8 +109,8 @@ export type Database = {
           action: "create" | "update" | "delete";
           changed_by: string;
           changed_at?: string;
-          old_values?: any | null;
-          new_values?: any | null;
+          old_values?: AuditLogChangeData | null;
+          new_values?: AuditLogChangeData | null;
           ip_address?: string | null;
           user_agent?: string | null;
         };
@@ -105,8 +120,8 @@ export type Database = {
           action?: "create" | "update" | "delete";
           changed_by?: string;
           changed_at?: string;
-          old_values?: any | null;
-          new_values?: any | null;
+          old_values?: AuditLogChangeData | null;
+          new_values?: AuditLogChangeData | null;
           ip_address?: string | null;
           user_agent?: string | null;
         };

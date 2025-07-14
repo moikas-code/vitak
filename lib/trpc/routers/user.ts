@@ -5,7 +5,7 @@ import { createSupabaseClientWithUser, createDefaultUserSettings } from "@/lib/d
 
 export const userRouter = createTRPCRouter({
   getCurrentUser: protectedProcedure.query(async ({ ctx }) => {
-    const supabase = createSupabaseClientWithUser(ctx.session.userId);
+    const supabase = await createSupabaseClientWithUser(ctx.session.userId);
     const { data, error } = await supabase
       .from("users")
       .select("*")
@@ -43,7 +43,7 @@ export const userRouter = createTRPCRouter({
       }
 
       // Use the database function to get or create user
-      const supabase = createSupabaseClientWithUser(ctx.session.userId);
+      const supabase = await createSupabaseClientWithUser(ctx.session.userId);
       const { data, error } = await supabase.rpc("get_or_create_user", {
         p_clerk_user_id: input.clerk_user_id,
         p_email: input.email,
@@ -64,7 +64,7 @@ export const userRouter = createTRPCRouter({
     }),
 
   getSettings: protectedProcedure.query(async ({ ctx }) => {
-    const supabase = createSupabaseClientWithUser(ctx.session.userId);
+    const supabase = await createSupabaseClientWithUser(ctx.session.userId);
     const { data, error } = await supabase
       .from("user_settings")
       .select("*")
@@ -132,7 +132,7 @@ export const userRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const supabase = createSupabaseClientWithUser(ctx.session.userId);
+      const supabase = await createSupabaseClientWithUser(ctx.session.userId);
       const { data, error } = await supabase
         .from("user_settings")
         .update({

@@ -25,7 +25,7 @@ export default function HistoryPage() {
   const { data: mealLogs } = api.mealLog.getByDateRange.useQuery(dateRange);
   const { data: balances } = api.credit.getAllBalances.useQuery();
 
-  const groupedByDate = mealLogs?.reduce((acc, log) => {
+  const groupedByDate = mealLogs?.reduce((acc: Record<string, MealLogWithFood[]>, log: MealLogWithFood) => {
     const date = format(new Date(log.logged_at), "yyyy-MM-dd");
     if (!acc[date]) {
       acc[date] = [];

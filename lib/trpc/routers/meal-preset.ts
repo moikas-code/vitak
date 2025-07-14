@@ -27,7 +27,7 @@ export const mealPresetRouter = createTRPCRouter({
         throw error;
       }
 
-      const supabase = createSupabaseClientWithUser(ctx.session.userId);
+      const supabase = await createSupabaseClientWithUser(ctx.session.userId);
       
       // First, get the food details to calculate vitamin K
       const { data: food, error: foodError } = await supabase
@@ -113,7 +113,7 @@ export const mealPresetRouter = createTRPCRouter({
       throw error;
     }
 
-    const supabase = createSupabaseClientWithUser(ctx.session.userId);
+    const supabase = await createSupabaseClientWithUser(ctx.session.userId);
     
     const { data, error } = await supabase
       .from("meal_presets")
@@ -139,7 +139,7 @@ export const mealPresetRouter = createTRPCRouter({
   delete: protectedProcedure
     .input(z.string())
     .mutation(async ({ ctx, input }) => {
-      const supabase = createSupabaseClientWithUser(ctx.session.userId);
+      const supabase = await createSupabaseClientWithUser(ctx.session.userId);
       
       // First verify the preset belongs to the user
       const { data: preset, error: fetchError } = await supabase
@@ -187,7 +187,7 @@ export const mealPresetRouter = createTRPCRouter({
         throw error;
       }
 
-      const supabase = createSupabaseClientWithUser(ctx.session.userId);
+      const supabase = await createSupabaseClientWithUser(ctx.session.userId);
       
       // Get the preset details
       const { data: preset, error: presetError } = await supabase

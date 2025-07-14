@@ -26,7 +26,7 @@ export const mealLogRouter = createTRPCRouter({
         throw error;
       }
 
-      const supabase = createSupabaseClientWithUser(ctx.session.userId);
+      const supabase = await createSupabaseClientWithUser(ctx.session.userId);
       
       // First, get the food details to calculate vitamin K
       const { data: food, error: foodError } = await supabase
@@ -87,7 +87,7 @@ export const mealLogRouter = createTRPCRouter({
       throw error;
     }
 
-    const supabase = createSupabaseClientWithUser(ctx.session.userId);
+    const supabase = await createSupabaseClientWithUser(ctx.session.userId);
     
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -125,7 +125,7 @@ export const mealLogRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
-      const supabase = createSupabaseClientWithUser(ctx.session.userId);
+      const supabase = await createSupabaseClientWithUser(ctx.session.userId);
       const { data, error } = await supabase
         .from("meal_logs")
         .select("*, food:foods(*)")
@@ -151,7 +151,7 @@ export const mealLogRouter = createTRPCRouter({
   delete: protectedProcedure
     .input(z.string())
     .mutation(async ({ ctx, input }) => {
-      const supabase = createSupabaseClientWithUser(ctx.session.userId);
+      const supabase = await createSupabaseClientWithUser(ctx.session.userId);
       // First verify the meal belongs to the user
       const { data: mealLog, error: fetchError } = await supabase
         .from("meal_logs")

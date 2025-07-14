@@ -30,6 +30,7 @@ import {
   Activity
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import Image from "next/image";
 
 export default function AdminUsersPage() {
   const { toast } = useToast();
@@ -130,16 +131,33 @@ export default function AdminUsersPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              data?.users.map((userSettings: any) => {
+              data?.users.map((userSettings: { 
+                user_id: string;
+                role: string;
+                daily_limit: number;
+                weekly_limit: number;
+                monthly_limit: number;
+                tracking_period: string;
+                created_at: string;
+                users?: {
+                  username?: string;
+                  first_name?: string;
+                  last_name?: string;
+                  email?: string;
+                  image_url?: string;
+                };
+              }) => {
                 const user = userSettings.users;
                 return (
                   <TableRow key={userSettings.user_id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         {user?.image_url ? (
-                          <img 
+                          <Image 
                             src={user.image_url} 
                             alt={user.username || "User"} 
+                            width={32}
+                            height={32}
                             className="w-8 h-8 rounded-full"
                           />
                         ) : (
@@ -233,16 +251,33 @@ export default function AdminUsersPage() {
             No users found
           </div>
         ) : (
-          data?.users.map((userSettings: any) => {
+          data?.users.map((userSettings: { 
+            user_id: string;
+            role: string;
+            daily_limit: number;
+            weekly_limit: number;
+            monthly_limit: number;
+            tracking_period: string;
+            created_at: string;
+            users?: {
+              username?: string;
+              first_name?: string;
+              last_name?: string;
+              email?: string;
+              image_url?: string;
+            };
+          }) => {
             const user = userSettings.users;
             return (
               <div key={userSettings.user_id} className="bg-white border rounded-lg p-4 space-y-3">
                 {/* User Info */}
                 <div className="flex items-start gap-3">
                   {user?.image_url ? (
-                    <img 
+                    <Image 
                       src={user.image_url} 
                       alt={user.username || "User"} 
+                      width={40}
+                      height={40}
                       className="w-10 h-10 rounded-full flex-shrink-0"
                     />
                   ) : (

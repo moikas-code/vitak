@@ -4,6 +4,7 @@ import { food_category_schema } from "@/lib/types";
 import { createSupabaseClientWithUser, createPublicSupabaseClient } from "@/lib/db/supabase-with-user";
 import { TRPCError } from "@trpc/server";
 import { checkRateLimit, RateLimitError, RATE_LIMITS } from "@/lib/security/rate-limit-redis";
+import type { Database } from "@/lib/db/types";
 
 export const foodRouter = createTRPCRouter({
   search: protectedProcedure
@@ -31,7 +32,7 @@ export const foodRouter = createTRPCRouter({
         throw error;
       }
       
-      const supabase = createSupabaseClientWithUser(ctx.session.userId);
+      const supabase = await createSupabaseClientWithUser(ctx.session.userId);
       let query = supabase
         .from("foods")
         .select("*")
@@ -53,7 +54,7 @@ export const foodRouter = createTRPCRouter({
         });
       }
 
-      return data.map((food) => ({
+      return data.map((food: Database['public']['Tables']['foods']['Row']) => ({
         ...food,
         created_at: new Date(food.created_at),
         updated_at: new Date(food.updated_at),
@@ -63,7 +64,7 @@ export const foodRouter = createTRPCRouter({
   getById: protectedProcedure
     .input(z.string())
     .query(async ({ ctx, input }) => {
-      const supabase = createSupabaseClientWithUser(ctx.session.userId);
+      const supabase = await createSupabaseClientWithUser(ctx.session.userId);
       const { data, error } = await supabase
         .from("foods")
         .select("*")

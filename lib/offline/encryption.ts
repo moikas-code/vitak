@@ -49,7 +49,7 @@ export function decrypt_data<T>(encrypted_data: string, user_id: string): T {
     if (json_string) {
       return JSON.parse(json_string);
     }
-  } catch (error) {
+  } catch {
     // If new key fails, try legacy key for backward compatibility
     logger.debug('Strong encryption failed, trying legacy', { user_id: user_id.substring(0, 8) + '...' });
   }

@@ -19,7 +19,7 @@ export default function LogMealPage() {
   }, []);
 
   const todayTotal = todayMeals?.reduce(
-    (sum, meal) => sum + meal.vitamin_k_consumed_mcg,
+    (sum: number, meal: { vitamin_k_consumed_mcg: number }) => sum + meal.vitamin_k_consumed_mcg,
     0
   ) || 0;
 

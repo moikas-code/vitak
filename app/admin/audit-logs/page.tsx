@@ -27,6 +27,7 @@ import {
   ChevronUp
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
+import type { AuditLogChangeData } from "@/lib/db/types";
 
 export default function AdminAuditLogsPage() {
   const [foodIdFilter, setFoodIdFilter] = useState("");
@@ -77,7 +78,7 @@ export default function AdminAuditLogsPage() {
     }
   };
   
-  const formatChanges = (oldValues: any, newValues: any) => {
+  const formatChanges = (oldValues: AuditLogChangeData | null, newValues: AuditLogChangeData | null) => {
     if (!oldValues) return null;
     
     const changes: string[] = [];
@@ -155,7 +156,18 @@ export default function AdminAuditLogsPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              data?.logs.map((log: any) => {
+              data?.logs.map((log: { 
+                id: number;
+                food_id: string;
+                action: string;
+                changed_by: string;
+                changed_at: string;
+                old_values: AuditLogChangeData | null;
+                new_values: AuditLogChangeData | null;
+                ip_address: string | null;
+                user_agent: string | null;
+                food?: { name: string; };
+              }) => {
                 const isExpanded = expandedRows.has(log.id);
                 const changes = log.action === "update" ? formatChanges(log.old_values, log.new_values) : null;
                 
@@ -281,7 +293,18 @@ export default function AdminAuditLogsPage() {
             No audit logs found
           </div>
         ) : (
-          data?.logs.map((log: any) => {
+          data?.logs.map((log: { 
+            id: number;
+            food_id: string;
+            action: string;
+            changed_by: string;
+            changed_at: string;
+            old_values: AuditLogChangeData | null;
+            new_values: AuditLogChangeData | null;
+            ip_address: string | null;
+            user_agent: string | null;
+            food?: { name: string; };
+          }) => {
             const isExpanded = expandedRows.has(log.id);
             const changes = log.action === "update" ? formatChanges(log.old_values, log.new_values) : null;
             

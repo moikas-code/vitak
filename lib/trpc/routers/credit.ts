@@ -41,7 +41,7 @@ export const creditRouter = createTRPCRouter({
       
       try {
         // Get user settings using the user ID from session context
-        const supabase = createSupabaseClientWithUser(ctx.session.userId);
+        const supabase = await createSupabaseClientWithUser(ctx.session.userId);
       const { data: settings, error: settingsError } = await supabase
         .from("user_settings")
         .select("daily_limit, weekly_limit, monthly_limit")
@@ -73,7 +73,7 @@ export const creditRouter = createTRPCRouter({
       }
 
       const credits_used = mealLogs.reduce(
-        (sum, log) => sum + log.vitamin_k_consumed_mcg,
+        (sum: number, log: { vitamin_k_consumed_mcg: number }) => sum + log.vitamin_k_consumed_mcg,
         0
       );
 
@@ -98,7 +98,7 @@ export const creditRouter = createTRPCRouter({
       console.log('[Credit.getAllBalances] Starting for user:', ctx.session.userId);
       
       // Get user settings using the user ID from session context
-      const supabase = createSupabaseClientWithUser(ctx.session.userId);
+      const supabase = await createSupabaseClientWithUser(ctx.session.userId);
     const { data: initial_settings, error: settingsError } = await supabase
       .from("user_settings")
       .select("daily_limit, weekly_limit, monthly_limit")
@@ -170,7 +170,7 @@ export const creditRouter = createTRPCRouter({
       }
 
       const credits_used = mealLogs.reduce(
-        (sum, log) => sum + log.vitamin_k_consumed_mcg,
+        (sum: number, log: { vitamin_k_consumed_mcg: number }) => sum + log.vitamin_k_consumed_mcg,
         0
       );
 

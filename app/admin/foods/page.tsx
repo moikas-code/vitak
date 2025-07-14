@@ -31,6 +31,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/lib/hooks/use-toast";
+import type { FoodCategory } from "@/lib/db/types";
 import { 
   Search, 
   Plus, 
@@ -67,7 +68,7 @@ export default function AdminFoodsPage() {
     page,
     limit: 20,
     search: search || undefined,
-    category: category === "all" ? undefined : category as any,
+    category: category === "all" ? undefined : category as FoodCategory,
     sort_by: sortBy,
     sort_order: sortOrder,
   });
