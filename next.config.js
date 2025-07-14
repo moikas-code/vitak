@@ -189,6 +189,8 @@ const nextConfig = {
         },
       },
     },
+    // Enable instrumentation for startup validation
+    instrumentationHook: true,
   },
   // Enable compression for better performance
   compress: true,

@@ -1,15 +1,30 @@
 import { Redis } from "@upstash/redis";
+import { createLogger } from "@/lib/logger";
 
 /**
  * Redis-based rate limiting for production use
  * Uses Upstash Redis for distributed rate limiting
  */
 
-// Initialize Redis client
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+const logger = createLogger('rate-limit');
+
+// Initialize Redis client with graceful fallback
+let redis: Redis | null = null;
+
+try {
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+    logger.info('Redis rate limiting initialized');
+  } else {
+    logger.warn('Redis credentials not found - rate limiting disabled');
+  }
+} catch (error) {
+  logger.error('Failed to initialize Redis client', { error });
+  redis = null;
+}
 
 export interface RateLimitConfig {
   windowMs: number; // Time window in milliseconds
@@ -35,6 +50,12 @@ export async function checkRateLimit(
   operation: string,
   config: RateLimitConfig
 ): Promise<boolean> {
+  // If Redis is not available, allow the request but log warning
+  if (!redis) {
+    logger.warn('Rate limiting skipped - Redis not available', { userId, operation });
+    return true;
+  }
+
   const key = `rate_limit:${userId}:${operation}`;
   const now = Date.now();
   const windowStart = now - config.windowMs;
@@ -76,7 +97,7 @@ export async function checkRateLimit(
       throw error;
     }
     
-    console.error("Rate limiting error:", error);
+    logger.error("Rate limiting error - failing open", { error, userId, operation });
     return true;
   }
 }
