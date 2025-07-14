@@ -1,7 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { supabaseServiceRole } from "./supabase-server";
 import { createLogger } from "@/lib/logger";
-import { auth } from "@clerk/nextjs/server";
 
 const logger = createLogger('supabase-user');
 

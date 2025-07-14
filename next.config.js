@@ -180,17 +180,7 @@ const nextConfig = {
     serverActions: {
       allowedOrigins: ['localhost:3000']
     },
-    // Enable Turbopack for faster dev builds
-    turbo: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
-      },
-    },
-    // Enable instrumentation for startup validation
-    instrumentationHook: true,
+    // Turbopack configuration has moved in Next.js 15
   },
   // Enable compression for better performance
   compress: true,
