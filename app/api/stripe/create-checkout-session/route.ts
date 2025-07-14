@@ -3,15 +3,19 @@ import Stripe from "stripe";
 import { auth } from "@clerk/nextjs/server";
 import { withRateLimit, API_RATE_LIMITS } from "@/lib/api/rate-limit";
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("Missing STRIPE_SECRET_KEY");
-}
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-05-28.basil",
-});
-
 export async function POST(req: NextRequest) {
+  // Check for Stripe configuration
+  if (!process.env.STRIPE_SECRET_KEY) {
+    console.error("Stripe is not configured - STRIPE_SECRET_KEY is missing");
+    return NextResponse.json(
+      { error: "Payment processing is not available" },
+      { status: 503 }
+    );
+  }
+
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: "2025-05-28.basil",
+  });
   try {
     const session = await auth();
     

@@ -8,25 +8,30 @@ import {
 } from "lucide-react";
 
 async function getAdminStats() {
-  const [foodsCount, usersCount, recentLogs, recentAudits] = await Promise.all([
-    supabaseServiceRole.from("foods").select("*", { count: "exact", head: true }),
-    supabaseServiceRole.from("user_settings").select("*", { count: "exact", head: true }),
-    supabaseServiceRole
-      .from("meal_logs")
-      .select("*", { count: "exact", head: true })
-      .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
-    supabaseServiceRole
-      .from("food_audit_log")
-      .select("*", { count: "exact", head: true })
-      .gte("changed_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
-  ]);
-  
-  return {
-    totalFoods: foodsCount.count || 0,
-    totalUsers: usersCount.count || 0,
-    logsToday: recentLogs.count || 0,
-    auditsThisWeek: recentAudits.count || 0,
-  };
+  try {
+    const [foodsCount, usersCount, recentLogs, recentAudits] = await Promise.all([
+      supabaseServiceRole.from("foods").select("*", { count: "exact", head: true }),
+      supabaseServiceRole.from("user_settings").select("*", { count: "exact", head: true }),
+      supabaseServiceRole
+        .from("meal_logs")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
+      supabaseServiceRole
+        .from("food_audit_log")
+        .select("*", { count: "exact", head: true })
+        .gte("changed_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+    ]);
+    
+    return {
+      totalFoods: foodsCount.count || 0,
+      totalUsers: usersCount.count || 0,
+      logsToday: recentLogs.count || 0,
+      auditsThisWeek: recentAudits.count || 0,
+    };
+  } catch (error) {
+    console.error("[AdminDashboard] Error fetching stats:", error);
+    throw new Error("Failed to fetch admin statistics");
+  }
 }
 
 export default async function AdminDashboard() {

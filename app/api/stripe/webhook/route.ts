@@ -5,13 +5,21 @@ import { createServerSupabaseClient } from "@/lib/db/supabase-server";
 import { checkRateLimit, RateLimitError } from "@/lib/security/rate-limit-redis";
 import { API_RATE_LIMITS } from "@/lib/api/rate-limit";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-05-28.basil",
-});
-
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
-
 export async function POST(request: NextRequest) {
+  // Check for Stripe configuration
+  if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
+    console.error("Stripe webhook is not configured - missing credentials");
+    return NextResponse.json(
+      { error: "Webhook processing is not available" },
+      { status: 503 }
+    );
+  }
+
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: "2025-05-28.basil",
+  });
+
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   try {
     // Apply rate limiting using service identifier
     try {
