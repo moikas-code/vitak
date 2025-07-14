@@ -3,11 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbo",
     "build": "next build",
+    "build:fast": "TSC_COMPILE_ON_ERROR=true next build",
+    "build:analyze": "ANALYZE=true next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit --incremental --tsBuildInfoFile .tsbuildinfo",
     "start:supabase": "supabase start",
     "stop:supabase": "supabase stop",
     "restart:supabase": "supabase stop && supabase start",
@@ -65,6 +67,7 @@
     "zustand": "^5.0.5"
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^15.3.5",
     "@types/node": "^22.15.33",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
