@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
-import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { TRPCProvider } from "@/lib/trpc/provider";
@@ -87,7 +86,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      signInFallbackRedirectUrl="/dashboard"
+      signUpFallbackRedirectUrl="/dashboard"
+    >
       <html lang="en" suppressHydrationWarning>
         <head />
         <body className={`${inter.variable} font-sans antialiased`}>
@@ -95,7 +97,7 @@ export default function RootLayout({
             {children}
             <Toaster />
           </TRPCProvider>
-          <Analytics />
+          {/* Analytics removed for Cloudflare deployment */}
         </body>
       </html>
     </ClerkProvider>
