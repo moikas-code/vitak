@@ -1,5 +1,8 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { getDb } from "@/lib/db";
+import { userSettings } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 const isProtectedRoute = createRouteMatcher([
   "/dashboard(.*)",
@@ -37,37 +40,38 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
+  // Force HTTPS in production
+  if (process.env.NODE_ENV === "production" && req.headers.get("x-forwarded-proto") === "http") {
+    const httpsUrl = new URL(req.url);
+    httpsUrl.protocol = "https:";
+    return NextResponse.redirect(httpsUrl, 308);
+  }
+
+  const { userId } = await auth();
+
   if (!isPublicRoute(req)) {
-    await auth.protect();
-    
+    if (!userId) {
+      const signInUrl = new URL("/auth/sign-in", req.url);
+      signInUrl.searchParams.set("redirect_url", req.url);
+      return NextResponse.redirect(signInUrl);
+    }
+
     // Check admin access for admin routes
     if (isAdminRoute(req)) {
-      const user = await auth();
-      
-      if (!user?.userId) {
-        return NextResponse.redirect(new URL('/auth/sign-in', req.url));
-      }
-      
-      // Temporary: Check role in database until JWT template is working
       try {
-        const { supabaseServiceRole } = await import("@/lib/db/supabase-server");
-        const { data } = await supabaseServiceRole
-          .from("user_settings")
-          .select("role")
-          .eq("user_id", user.userId)
-          .single();
-        
-        console.log('[Middleware] Database role check:', data?.role);
-        
-        if (data?.role !== 'admin') {
-          console.log('[Middleware] Access denied - user role:', data?.role);
-          return NextResponse.redirect(new URL('/dashboard', req.url));
+        const db = await getDb();
+        const settings = await db
+          .select({ role: userSettings.role })
+          .from(userSettings)
+          .where(eq(userSettings.userId, userId))
+          .get();
+
+        if (settings?.role !== "admin") {
+          return NextResponse.redirect(new URL("/dashboard", req.url));
         }
-        
-        console.log('[Middleware] Admin access granted for user:', user.userId);
       } catch (error) {
-        console.error('[Middleware] Error checking admin role:', error);
-        return NextResponse.redirect(new URL('/dashboard', req.url));
+        console.error("[Middleware] Error checking admin role:", error);
+        return NextResponse.redirect(new URL("/dashboard", req.url));
       }
     }
   }
