@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/lib/trpc/provider";
 import { useToast } from "@/lib/hooks/use-toast";
 import { Trash2 } from "lucide-react";
-import { useOfflineMealLogs, useConnectionStatus } from "@/lib/offline/hooks";
 import { sanitizeText } from "@/lib/security/sanitize-html";
 import type { MealLogWithFood } from "@/lib/types";
 
@@ -16,33 +15,19 @@ interface RecentMealsProps {
 function RecentMealsComponent({ meals }: RecentMealsProps) {
   const { toast } = useToast();
   const utils = api.useUtils();
-  const { deleteMealLog } = useOfflineMealLogs();
-  const { is_online } = useConnectionStatus();
-  
-  const handleDeleteMeal = async (meal_id: string) => {
-    try {
-      await deleteMealLog(meal_id);
-      
-      toast({
-        title: "Meal removed",
-        description: is_online 
-          ? "The meal has been removed from your log."
-          : "Meal removed locally. Will sync when connection is restored.",
-      });
-      
-      // Invalidate queries if online
-      if (is_online) {
-        utils.mealLog.getToday.invalidate();
-        utils.credit.getAllBalances.invalidate();
-      }
-    } catch (error) {
-      console.error('Failed to delete meal:', error);
-      toast({
-        title: "Error",
-        description: "Failed to remove meal. Please try again.",
-        variant: "destructive",
-      });
-    }
+  const deleteMeal = api.mealLog.delete.useMutation({
+    onSuccess: () => {
+      utils.mealLog.getToday.invalidate();
+      utils.credit.getAllBalances.invalidate();
+      toast({ title: "Meal removed", description: "The meal has been removed from your log." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to remove meal. Please try again.", variant: "destructive" });
+    },
+  });
+
+  const handleDeleteMeal = (mealId: string) => {
+    deleteMeal.mutate(mealId);
   };
 
   if (meals.length === 0) {
@@ -76,6 +61,7 @@ function RecentMealsComponent({ meals }: RecentMealsProps) {
             variant="ghost"
             size="icon"
             onClick={() => handleDeleteMeal(meal.id)}
+            disabled={deleteMeal.isPending}
             aria-label={`Delete meal: ${sanitizeText(meal.food?.name) || "Unknown Food"}`}
           >
             <Trash2 className="h-4 w-4" />
@@ -86,13 +72,9 @@ function RecentMealsComponent({ meals }: RecentMealsProps) {
   );
 }
 
-// Memoize with custom comparison function
 export const RecentMeals = memo(RecentMealsComponent, (prevProps, nextProps) => {
-  // Only re-render if meals have actually changed
   if (prevProps.meals.length !== nextProps.meals.length) return false;
-  
-  // Check if meal IDs are the same
-  return prevProps.meals.every((meal, idx) => 
+  return prevProps.meals.every((meal, idx) =>
     meal.id === nextProps.meals[idx].id &&
     meal.vitamin_k_consumed_mcg === nextProps.meals[idx].vitamin_k_consumed_mcg
   );

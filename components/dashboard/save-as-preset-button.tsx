@@ -15,13 +15,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/lib/hooks/use-toast";
 import { Bookmark, Loader2 } from "lucide-react";
-import type { Food } from "@/lib/types";
+import type { FoodRow } from "@/lib/db/mappers";
 import { api } from "@/lib/trpc/provider";
 import { sanitizeText } from "@/lib/security/sanitize-html";
 import { validatePresetName } from "@/lib/security/input-validation";
 
 interface SaveAsPresetButtonProps {
-  food: Food;
+  food: FoodRow;
   portion_size_g: number;
   onSuccess?: () => void;
 }

@@ -9,11 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/trpc/provider";
 import { useToast } from "@/lib/hooks/use-toast";
-import { Search, Plus, Wifi, WifiOff } from "lucide-react";
-import type { Food } from "@/lib/types";
+import { Search, Plus } from "lucide-react";
+import type { FoodRow } from "@/lib/db/mappers";
 import { track_meal_event, track_search_event } from "@/lib/analytics";
 import { SaveAsPresetButton } from "./save-as-preset-button";
-import { useOfflineMealLogs, useOfflineFoodSearch, useConnectionStatus } from "@/lib/offline/hooks";
 import { sanitizeText } from "@/lib/security/sanitize-html";
 import { sanitizeSearchQuery } from "@/lib/security/input-validation";
 import { useDebounce } from "@/lib/hooks/use-debounce";
@@ -28,19 +27,40 @@ type AddMealForm = z.infer<typeof add_meal_schema>;
 export function QuickAdd() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
-  const [selectedFood, setSelectedFood] = useState<Food | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Debounce search to reduce API calls
+  const [selectedFoodRow, setSelectedFoodRow] = useState<FoodRow | null>(null);
+
   const debouncedSearch = useDebounce(search, 300);
-  
-  // Use offline-capable hooks with sanitized and debounced search
-  const { foods, is_loading } = useOfflineFoodSearch(sanitizeSearchQuery(debouncedSearch));
-  const { addMealLog } = useOfflineMealLogs();
-  const { is_online, unsynced_count } = useConnectionStatus();
-  
-  // Keep utils for invalidation when online
   const utils = api.useUtils();
+
+  // Direct tRPC queries — no offline layer
+  const { data: foods, isLoading: is_loading } = api.food.search.useQuery(
+    { query: sanitizeSearchQuery(debouncedSearch) },
+    { enabled: debouncedSearch.length > 0, retry: false, staleTime: 0 }
+  );
+
+  const createMeal = api.mealLog.add.useMutation({
+    onSuccess: () => {
+      // Invalidate all related queries so they refetch
+      utils.mealLog.getToday.invalidate();
+      utils.credit.getAllBalances.invalidate();
+
+      toast({
+        title: "Meal logged",
+        description: "Your meal has been added successfully.",
+      });
+
+      setSelectedFoodRow(null);
+      setSearch("");
+      reset();
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to log meal. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const {
     register,
@@ -53,53 +73,21 @@ export function QuickAdd() {
     resolver: zodResolver(add_meal_schema),
   });
 
-  const onSubmit = async (data: AddMealForm) => {
-    if (!selectedFood) return;
-    
-    setIsSubmitting(true);
-    
-    try {
-      await addMealLog(data.food_id, data.portion_size_g);
-      
-      track_meal_event('saved', {
-        food_category: selectedFood.category,
-        vitamin_k_amount: selectedFood.vitamin_k_mcg_per_100g > 50 ? 'high' : selectedFood.vitamin_k_mcg_per_100g > 20 ? 'medium' : 'low'
-      });
-      
-      toast({
-        title: "Meal logged",
-        description: is_online 
-          ? "Your meal has been added successfully." 
-          : "Meal saved offline. Will sync when connection is restored.",
-      });
-      
-      setSelectedFood(null);
-      setSearch("");
-      reset();
-      
-      // Invalidate queries if online
-      if (is_online) {
-        utils.mealLog.getToday.invalidate();
-        utils.credit.getAllBalances.invalidate();
-      }
-    } catch (error) {
-      console.error('Failed to add meal:', error);
-      toast({
-        title: "Error",
-        description: "Failed to log meal. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+  const onSubmit = (data: AddMealForm) => {
+    if (!selectedFoodRow) return;
+    track_meal_event('saved', {
+      food_category: selectedFoodRow.category,
+      vitamin_k_amount: selectedFoodRow.vitamin_k_mcg_per_100g > 50 ? 'high' : selectedFoodRow.vitamin_k_mcg_per_100g > 20 ? 'medium' : 'low'
+    });
+    createMeal.mutate({ food_id: data.food_id, portion_size_g: data.portion_size_g });
   };
 
-  const selectFood = (food: Food) => {
+  const selectFoodRow = (food: FoodRow) => {
     track_meal_event('food_selected', {
       food_category: food.category,
       vitamin_k_amount: food.vitamin_k_mcg_per_100g > 50 ? 'high' : food.vitamin_k_mcg_per_100g > 20 ? 'medium' : 'low'
     });
-    setSelectedFood(food);
+    setSelectedFoodRow(food);
     setValue("food_id", food.id);
     setValue("portion_size_g", food.common_portion_size_g);
   };
@@ -119,9 +107,7 @@ export function QuickAdd() {
               const value = e.target.value;
               setSearch(value);
               if (value.length > 2) {
-                track_search_event('food_search', {
-                  query_length: value.length
-                });
+                track_search_event('food_search', { query_length: value.length });
               }
             }}
             className="pl-10"
@@ -132,20 +118,8 @@ export function QuickAdd() {
       {is_loading && (
         <p className="text-sm text-muted-foreground">Searching...</p>
       )}
-      
-      {/* Connection status indicator */}
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        {is_online ? (
-          <><Wifi className="h-3 w-3" /> Online</>
-        ) : (
-          <><WifiOff className="h-3 w-3" /> Offline</>
-        )}
-        {unsynced_count > 0 && (
-          <span className="text-amber-600">({unsynced_count} pending sync)</span>
-        )}
-      </div>
 
-      {foods && foods.length > 0 && !selectedFood && (
+      {foods && foods.length > 0 && !selectedFoodRow && (
         <div className="space-y-2 max-h-48 overflow-y-auto">
           {foods.map((food) => {
             const portion_k_mcg = (food.vitamin_k_mcg_per_100g * food.common_portion_size_g) / 100;
@@ -153,7 +127,7 @@ export function QuickAdd() {
             return (
             <button
               key={food.id}
-              onClick={() => selectFood(food)}
+              onClick={() => selectFoodRow(food)}
               className="w-full text-left p-3 rounded-lg border hover:bg-accent transition-colors"
             >
               <div className="font-medium flex items-center gap-2">
@@ -174,19 +148,19 @@ export function QuickAdd() {
         </div>
       )}
 
-      {selectedFood && (
+      {selectedFoodRow && (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="p-3 rounded-lg border bg-accent/50">
             <div className="font-medium flex items-center gap-2">
-              {sanitizeText(selectedFood.name)}
-              {(selectedFood.vitamin_k_mcg_per_100g * selectedFood.common_portion_size_g / 100) < 5 && (
+              {sanitizeText(selectedFoodRow.name)}
+              {(selectedFoodRow.vitamin_k_mcg_per_100g * selectedFoodRow.common_portion_size_g / 100) < 5 && (
                 <span className="text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded">Low K</span>
               )}
             </div>
             <div className="text-sm text-muted-foreground">
-              <div>{selectedFood.vitamin_k_mcg_per_100g} mcg per 100g</div>
+              <div>{selectedFoodRow.vitamin_k_mcg_per_100g} mcg per 100g</div>
               <div className="text-xs">
-                Common portion: {sanitizeText(selectedFood.common_portion_name)} ({selectedFood.common_portion_size_g}g)
+                Common portion: {sanitizeText(selectedFoodRow.common_portion_name)} ({selectedFoodRow.common_portion_size_g}g)
               </div>
             </div>
           </div>
@@ -198,10 +172,10 @@ export function QuickAdd() {
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => setValue("portion_size_g", selectedFood.common_portion_size_g)}
+                onClick={() => setValue("portion_size_g", selectedFoodRow.common_portion_size_g)}
                 className="text-xs"
               >
-                Use {sanitizeText(selectedFood.common_portion_name)}
+                Use {sanitizeText(selectedFoodRow.common_portion_name)}
               </Button>
             </div>
             <Input
@@ -209,7 +183,7 @@ export function QuickAdd() {
               type="number"
               step="0.1"
               {...register("portion_size_g", { valueAsNumber: true })}
-              placeholder={`e.g., ${selectedFood.common_portion_size_g}`}
+              placeholder={`e.g., ${selectedFoodRow.common_portion_size_g}`}
             />
             {errors.portion_size_g && (
               <p className="text-sm text-destructive">
@@ -218,26 +192,26 @@ export function QuickAdd() {
             )}
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">
-                {sanitizeText(selectedFood.common_portion_name)} = {selectedFood.common_portion_size_g}g
+                {sanitizeText(selectedFoodRow.common_portion_name)} = {selectedFoodRow.common_portion_size_g}g
               </p>
               {watch("portion_size_g") && (
                 <p className="text-sm font-medium text-primary">
-                  Vitamin K: {((selectedFood.vitamin_k_mcg_per_100g * (watch("portion_size_g") || 0)) / 100 || 0).toFixed(1)} mcg
+                  Vitamin K: {((selectedFoodRow.vitamin_k_mcg_per_100g * (watch("portion_size_g") || 0)) / 100 || 0).toFixed(1)} mcg
                 </p>
               )}
             </div>
           </div>
 
           <div className="flex gap-2 flex-wrap">
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={createMeal.isPending}>
               <Plus className="mr-2 h-4 w-4" />
-              {isSubmitting ? "Adding..." : "Add Meal"}
+              {createMeal.isPending ? "Adding..." : "Add Meal"}
             </Button>
             <SaveAsPresetButton
-              food={selectedFood}
-              portion_size_g={watch("portion_size_g") || selectedFood.common_portion_size_g}
+              food={selectedFoodRow}
+              portion_size_g={watch("portion_size_g") || selectedFoodRow.common_portion_size_g}
               onSuccess={() => {
-                setSelectedFood(null);
+                setSelectedFoodRow(null);
                 reset();
               }}
             />
@@ -245,7 +219,7 @@ export function QuickAdd() {
               type="button"
               variant="outline"
               onClick={() => {
-                setSelectedFood(null);
+                setSelectedFoodRow(null);
                 reset();
               }}
             >

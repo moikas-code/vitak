@@ -11,12 +11,9 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { track_dashboard_event } from "@/lib/analytics";
-import { useOfflineMealLogs, useOfflineInit, useTokenRefresh } from "@/lib/offline/hooks";
 
 export default function LogMealPage() {
-  useOfflineInit(); // Initialize offline services
-  useTokenRefresh(); // Keep tokens fresh for sync
-  const { meal_logs: todayMeals, is_loading: mealsLoading } = useOfflineMealLogs();
+  const { data: todayMeals, isLoading: mealsLoading } = api.mealLog.getToday.useQuery();
   const { data: balances } = api.credit.getAllBalances.useQuery();
 
   useEffect(() => {
@@ -24,7 +21,7 @@ export default function LogMealPage() {
   }, []);
 
   const todayTotal = todayMeals?.reduce(
-    (sum: number, meal) => sum + (meal.vitamin_k_consumed_mcg ?? 0),
+    (sum: number, meal: { vitamin_k_consumed_mcg: number }) => sum + (meal.vitamin_k_consumed_mcg ?? 0),
     0
   ) ?? 0;
 
