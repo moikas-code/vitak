@@ -45,7 +45,7 @@ export const mealPresetRouter = createTRPCRouter({
         });
       }
 
-      const vitamin_k_mcg = Math.round(
+      const vitamin_k_mcg = Math.ceil(
         (input.portion_size_g / 100) * food.vitaminKMcgPer100g
       );
 

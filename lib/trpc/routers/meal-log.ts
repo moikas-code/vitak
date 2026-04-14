@@ -93,7 +93,9 @@ export const mealLogRouter = createTRPCRouter({
         });
       }
 
-      const vitamin_k_consumed_mcg = Math.round(
+      // Use ceil to be conservative for warfarin patients —
+      // undercounting VK is more dangerous than slight overcounting
+      const vitamin_k_consumed_mcg = Math.ceil(
         (input.portion_size_g / 100) * food.vitaminKMcgPer100g
       );
 

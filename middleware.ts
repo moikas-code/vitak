@@ -24,9 +24,6 @@ const isPublicRoute = createRouteMatcher([
   "/api/stripe(.*)",
   "/api/auth/sync-user",
   "/api/clerk/webhook",
-  "/api/debug/role",
-  "/test-admin",
-  "/debug-session",
   "/privacy",
   "/terms",
   "/vitamin-k-foods-warfarin",
@@ -38,6 +35,46 @@ const isPublicRoute = createRouteMatcher([
   "/faq",
   "/blog(.*)",
 ]);
+
+function addSecurityHeaders(response: NextResponse) {
+  // Prevent clickjacking
+  response.headers.set("X-Frame-Options", "DENY");
+  // Prevent MIME type sniffing
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  // XSS protection (legacy browsers)
+  response.headers.set("X-XSS-Protection", "1; mode=block");
+  // Referrer policy
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  // Disable unnecessary browser features
+  response.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+  );
+  // HSTS — enforce HTTPS for 1 year with subdomains
+  if (process.env.NODE_ENV === "production") {
+    response.headers.set(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains; preload"
+    );
+  }
+  // Content Security Policy
+  response.headers.set(
+    "Content-Security-Policy",
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com data:",
+      "img-src 'self' data: blob: https://img.clerk.com https://*.clerk.com",
+      "connect-src 'self' https: wss:",
+      "frame-src https://challenges.cloudflare.com",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join("; ")
+  );
+  return response;
+}
 
 export default clerkMiddleware(async (auth, req) => {
   // Force HTTPS in production
@@ -75,6 +112,10 @@ export default clerkMiddleware(async (auth, req) => {
       }
     }
   }
+
+  // Apply security headers to all responses
+  const response = NextResponse.next();
+  return addSecurityHeaders(response);
 });
 
 export const config = {

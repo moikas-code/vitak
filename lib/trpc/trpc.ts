@@ -22,16 +22,21 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
     if (authorization?.startsWith("Bearer ")) {
       const token = authorization.slice(7);
       try {
-        const jwt_payload = await verifyToken(token, {
-          jwtKey: process.env.CLERK_JWT_KEY || process.env.CLERK_SECRET_KEY,
-          authorizedParties: process.env.CLERK_AUTHORIZED_PARTIES?.split(",") || [],
-        });
-        if (jwt_payload && jwt_payload.sub) {
-          session = {
-            userId: jwt_payload.sub,
-            sessionId: jwt_payload.sid || "",
-            sessionClaims: jwt_payload,
-          } as typeof session;
+        const jwtKey = process.env.CLERK_JWT_KEY;
+        if (!jwtKey) {
+          console.error("[tRPC] CLERK_JWT_KEY is not set — Bearer token auth disabled");
+        } else {
+          const jwt_payload = await verifyToken(token, {
+            jwtKey,
+            authorizedParties: process.env.CLERK_AUTHORIZED_PARTIES?.split(",") || [],
+          });
+          if (jwt_payload && jwt_payload.sub) {
+            session = {
+              userId: jwt_payload.sub,
+              sessionId: jwt_payload.sid || "",
+              sessionClaims: jwt_payload,
+            } as typeof session;
+          }
         }
       } catch (error) {
         console.warn("[tRPC] Failed to verify Bearer token:", error);

@@ -121,7 +121,7 @@ export function useOfflineMealLogs() {
       throw new Error('Food not found');
     }
 
-    const vitamin_k_consumed_mcg = (food.vitamin_k_mcg_per_100g * portion_size_g) / 100;
+    const vitamin_k_consumed_mcg = Math.ceil((food.vitamin_k_mcg_per_100g * portion_size_g) / 100);
 
     const new_log: MealLog = {
       id: `local_${Date.now()}_${Math.random()}`,
@@ -546,7 +546,7 @@ export function useOfflineMealPresets() {
     }
 
     // Calculate vitamin K
-    const vitamin_k_consumed_mcg = (food.vitamin_k_mcg_per_100g * preset.portion_size_g) / 100;
+    const vitamin_k_consumed_mcg = Math.ceil((food.vitamin_k_mcg_per_100g * preset.portion_size_g) / 100);
 
     // Create meal log
     const new_log: MealLog = {

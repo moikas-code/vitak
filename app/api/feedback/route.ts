@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
           fields: [
             { name: "User", value: username, inline: true },
             { name: "Rating", value: stars, inline: true },
-            { name: "User ID", value: userId, inline: false },
+            { name: "User ID", value: `...${userId.slice(-6)}`, inline: false },
           ],
           footer: {
             text: "VitaK Tracker Feedback System",
