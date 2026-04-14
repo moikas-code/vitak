@@ -53,7 +53,7 @@ export function useOfflineMealLogs() {
     if (!user) return;
 
     try {
-      // Always load local data first
+      // Always load local data first — this includes unsynced items
       const local_logs = await storage.getMealLogs(user.id);
 
       // Enrich with food data
@@ -162,6 +162,9 @@ export function useOfflineMealLogs() {
     } else {
       logger.info('Offline - sync will happen when connection is restored');
     }
+
+    // Reload from IndexedDB to pick up any changes (including server ID updates from sync)
+    await loadMealLogs();
   };
 
   const deleteMealLog = async (id: string) => {
