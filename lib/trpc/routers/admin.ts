@@ -16,6 +16,9 @@ const food_category_enum = z.enum([
   "dairy",
   "fats_oils",
   "beverages",
+  "nuts_seeds",
+  "herbs_spices",
+  "prepared_foods",
   "other",
 ]);
 

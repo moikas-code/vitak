@@ -53,6 +53,9 @@ const categories = [
   { value: "dairy", label: "Dairy" },
   { value: "fats_oils", label: "Fats & Oils" },
   { value: "beverages", label: "Beverages" },
+  { value: "nuts_seeds", label: "Nuts & Seeds" },
+  { value: "herbs_spices", label: "Herbs & Spices" },
+  { value: "prepared_foods", label: "Prepared Foods" },
   { value: "other", label: "Other" },
 ];
 

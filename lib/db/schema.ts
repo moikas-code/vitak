@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, index } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
 // ─── Users ──────────────────────────────────────────────────────
@@ -39,6 +39,9 @@ export const FOOD_CATEGORIES = [
   "dairy",
   "fats_oils",
   "beverages",
+  "nuts_seeds",
+  "herbs_spices",
+  "prepared_foods",
   "other",
 ] as const;
 export type FoodCategory = (typeof FOOD_CATEGORIES)[number];
@@ -47,12 +50,15 @@ export type FoodCategory = (typeof FOOD_CATEGORIES)[number];
 export const foods = sqliteTable("foods", {
   id: text("id").primaryKey().default(sql`(lower(hex(randomblob(16))))`),
   name: text("name").notNull(),
-  vitaminKMcgPer100g: integer("vitamin_k_mcg_per_100g").notNull(),
+  vitaminKMcgPer100g: real("vitamin_k_mcg_per_100g").notNull(),
   category: text("category", { enum: FOOD_CATEGORIES }).notNull(),
-  commonPortionSizeG: integer("common_portion_size_g").notNull(),
+  commonPortionSizeG: real("common_portion_size_g").notNull(),
   commonPortionName: text("common_portion_name").notNull(),
   createdBy: text("created_by"),
   updatedBy: text("updated_by"),
+  dataSource: text("data_source").default("usda_fdc_sr_legacy"),
+  fdcId: integer("fdc_id"),
+  verifiedAt: text("verified_at"),
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });

@@ -53,7 +53,7 @@ export default async function HomePage() {
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full bg-green-50 border border-green-200 px-3 py-1 text-sm text-green-700 mb-6">
                   <CheckCircle2 className="h-4 w-4" />
-                  USDA-verified nutritional data
+                  Based on USDA FoodData Central
                 </div>
                 <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 leading-tight">
                   Stay on track.
@@ -111,7 +111,7 @@ export default async function HomePage() {
                 </div>
                 <h4 className="font-semibold text-lg mb-2">Log Your Meals</h4>
                 <p className="text-gray-600 text-sm">
-                  Search our USDA-backed food database and log what you ate. Portion sizes are calculated automatically.
+                  Search our food database—sourced from USDA data—and log what you ate. Portion sizes are calculated automatically.
                 </p>
               </div>
               <div className="text-center">
@@ -301,7 +301,7 @@ export default async function HomePage() {
                 Consistent Vitamin K. Stable INR. Less worry.
               </h3>
               <p className="text-lg text-gray-600 mb-8">
-                Built on USDA data and designed for the real-world needs of warfarin patients.
+                Built on USDA FoodData Central data and designed for the real-world needs of warfarin patients.
                 Always consult your healthcare provider for personalized dietary guidance.
               </p>
               {isLoggedIn ? (

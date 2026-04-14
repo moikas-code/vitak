@@ -24,6 +24,9 @@ const CATEGORY_LABELS: Record<FoodCategory, string> = {
   dairy: "Dairy",
   fats_oils: "Fats & Oils",
   beverages: "Beverages",
+  nuts_seeds: "Nuts & Seeds",
+  herbs_spices: "Herbs & Spices",
+  prepared_foods: "Prepared Foods",
   other: "Other",
 };
 

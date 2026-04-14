@@ -9,6 +9,9 @@ export const food_category_schema = z.enum([
   "dairy",
   "fats_oils",
   "beverages",
+  "nuts_seeds",
+  "herbs_spices",
+  "prepared_foods",
   "other",
 ]);
 

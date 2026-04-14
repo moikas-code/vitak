@@ -13,6 +13,9 @@ export function Footer() {
             <p className="text-gray-500 text-xs mt-2">
               Not intended to replace professional medical advice.
             </p>
+            <p className="text-gray-500 text-xs mt-1">
+              Nutritional data sourced from USDA FoodData Central. Prepared food values are estimates.
+            </p>
           </div>
           
           <div>
