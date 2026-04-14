@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/lib/hooks/use-toast";
-import { Trash2, Plus, Loader2, Bookmark, WifiOff } from "lucide-react";
+import { Trash2, Plus, Loader2, Bookmark } from "lucide-react";
 import { api } from "@/lib/trpc/provider";
 import { sanitizeText } from "@/lib/security/sanitize-html";
 import {
@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { track_meal_event } from "@/lib/analytics";
 import { getVitaminKColor, getVitaminKLevel } from "@/lib/config/constants";
-import { useConnectionStatus } from "@/lib/offline/hooks";
+
 
 type PresetItem = {
   id: string;
@@ -41,7 +41,6 @@ export function MealPresets() {
     staleTime: 0,
     refetchOnWindowFocus: true,
   });
-  const { is_online } = useConnectionStatus();
 
   const delete_mutation = api.mealPreset.delete.useMutation({
     onSuccess: () => {
@@ -88,12 +87,6 @@ export function MealPresets() {
         <p className="mt-2 text-sm text-muted-foreground">
           No meal presets yet. Save your favorite meal combinations for quick access!
         </p>
-        {!is_online && (
-          <div className="flex items-center justify-center gap-2 mt-2 text-amber-600">
-            <WifiOff className="h-4 w-4" />
-            <span className="text-xs">Offline mode</span>
-          </div>
-        )}
       </div>
     );
   }
