@@ -147,28 +147,42 @@ export function QuickAdd() {
 
       {foods && foods.length > 0 && !selectedFood && (
         <div className="space-y-2 max-h-48 overflow-y-auto">
-          {foods.map((food) => (
+          {foods.map((food) => {
+            const portion_k_mcg = (food.vitamin_k_mcg_per_100g * food.common_portion_size_g) / 100;
+            const is_low_k = portion_k_mcg < 5;
+            return (
             <button
               key={food.id}
               onClick={() => selectFood(food)}
               className="w-full text-left p-3 rounded-lg border hover:bg-accent transition-colors"
             >
-              <div className="font-medium">{sanitizeText(food.name)}</div>
+              <div className="font-medium flex items-center gap-2">
+                {sanitizeText(food.name)}
+                {is_low_k && (
+                  <span className="text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded">Low K</span>
+                )}
+              </div>
               <div className="text-sm text-muted-foreground">
                 <div>{food.vitamin_k_mcg_per_100g} mcg per 100g</div>
                 <div className="text-xs">
-                  {sanitizeText(food.common_portion_name)} ({food.common_portion_size_g}g): {((food.vitamin_k_mcg_per_100g * food.common_portion_size_g) / 100 || 0).toFixed(1)} mcg
+                  {sanitizeText(food.common_portion_name)} ({food.common_portion_size_g}g): {portion_k_mcg.toFixed(1)} mcg
                 </div>
               </div>
             </button>
-          ))}
+            );
+          })}
         </div>
       )}
 
       {selectedFood && (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="p-3 rounded-lg border bg-accent/50">
-            <div className="font-medium">{sanitizeText(selectedFood.name)}</div>
+            <div className="font-medium flex items-center gap-2">
+              {sanitizeText(selectedFood.name)}
+              {(selectedFood.vitamin_k_mcg_per_100g * selectedFood.common_portion_size_g / 100) < 5 && (
+                <span className="text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded">Low K</span>
+              )}
+            </div>
             <div className="text-sm text-muted-foreground">
               <div>{selectedFood.vitamin_k_mcg_per_100g} mcg per 100g</div>
               <div className="text-xs">
