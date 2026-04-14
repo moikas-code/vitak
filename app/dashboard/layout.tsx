@@ -5,8 +5,6 @@ import { DonateButton } from "@/components/donate/donate-button";
 import { FeedbackButton } from "@/components/feedback/feedback-button";
 import { UserSync } from "@/components/auth/user-sync";
 import { MobileMenu } from "@/components/dashboard/mobile-menu";
-import { ConnectionIndicator } from "@/components/offline/connection-indicator";
-import { OfflineInitializer } from "@/components/offline/offline-initializer";
 
 export default function DashboardLayout({
   children,
@@ -16,8 +14,6 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-gray-50">
       <UserSync />
-      <OfflineInitializer />
-      <ConnectionIndicator />
       <header className="bg-white border-b">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
@@ -92,7 +88,7 @@ export default function DashboardLayout({
                   <Settings className="h-4 w-4" />
                   <span className="hidden xl:block">Settings</span>
                 </Link>
-                
+
 
               </nav>
             </div>

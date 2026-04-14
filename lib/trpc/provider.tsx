@@ -12,7 +12,7 @@ const createQueryClient = () => new QueryClient({
   defaultOptions: {
     queries: {
       // Optimize for PWA/mobile usage
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: 30 * 1000, // 30 seconds — keep data fresh for recent mutations
       gcTime: 10 * 60 * 1000, // 10 minutes
       retry: (failureCount, error: unknown) => {
         // Don't retry on 4xx errors except 429 (rate limit)
@@ -24,8 +24,6 @@ const createQueryClient = () => new QueryClient({
         return failureCount < 3;
       },
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      // Enable offline support
-      networkMode: 'offlineFirst',
     },
     mutations: {
       retry: (failureCount, error: unknown) => {
@@ -37,7 +35,6 @@ const createQueryClient = () => new QueryClient({
         return failureCount < 2;
       },
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-      networkMode: 'offlineFirst',
     },
   },
 });

@@ -39,14 +39,17 @@ export function QuickAdd() {
   );
 
   const createMeal = api.mealLog.add.useMutation({
-    onSuccess: () => {
-      // Invalidate all related queries so they refetch
-      utils.mealLog.getToday.invalidate();
+    onSuccess: (newMeal) => {
+      // Optimistically update the cache — don't wait for refetch
+      utils.mealLog.getToday.setData(undefined as any, (old: any) => {
+        if (!old) return [newMeal];
+        return [newMeal, ...old];
+      });
       utils.credit.getAllBalances.invalidate();
 
       toast({
         title: "Meal logged",
-        description: "Your meal has been added successfully.",
+        description: `${newMeal.food?.name ?? 'Meal'} — ${(newMeal.vitamin_k_consumed_mcg ?? 0).toFixed(1)} mcg vitamin K`,
       });
 
       setSelectedFoodRow(null);

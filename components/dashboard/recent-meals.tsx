@@ -16,8 +16,12 @@ function RecentMealsComponent({ meals }: RecentMealsProps) {
   const { toast } = useToast();
   const utils = api.useUtils();
   const deleteMeal = api.mealLog.delete.useMutation({
-    onSuccess: () => {
-      utils.mealLog.getToday.invalidate();
+    onSuccess: (_data, mealId) => {
+      // Optimistically remove from cache
+      utils.mealLog.getToday.setData(undefined, (old) => {
+        if (!old) return [];
+        return old.filter((m) => m.id !== mealId);
+      });
       utils.credit.getAllBalances.invalidate();
       toast({ title: "Meal removed", description: "The meal has been removed from your log." });
     },
