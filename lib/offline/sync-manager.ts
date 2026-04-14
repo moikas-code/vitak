@@ -103,6 +103,16 @@ export class SyncManager {
       
       for (const item of sync_queue) {
         try {
+          // Skip items that already have server IDs (already synced)
+          if (item.data && typeof item.data === 'object' && 'id' in item.data) {
+            const dataId = (item.data as { id?: string }).id;
+            if (dataId && !dataId.startsWith('local_')) {
+              logger.info('Skipping already-synced item:', { itemId: item.id, dataId });
+              await this.storage.removeSyncQueueItem(item.id);
+              continue;
+            }
+          }
+
           await this.processSyncItem(item);
           await this.storage.removeSyncQueueItem(item.id);
         } catch (error) {
@@ -112,8 +122,9 @@ export class SyncManager {
           const is_auth_error = error_message.includes('AUTH_FAILED');
           
           // Update retry count
+          const new_retry_count = item.retry_count + 1;
           await this.storage.updateSyncQueueItem(item.id, {
-            retry_count: item.retry_count + 1,
+            retry_count: new_retry_count,
             error: error_message,
           });
           
@@ -121,8 +132,8 @@ export class SyncManager {
           const max_retries = is_auth_error ? 2 : 5;
           
           // Remove from queue if too many retries
-          if (item.retry_count >= max_retries) {
-            logger.warn(`Removing item from sync queue after ${item.retry_count} retries:`, { itemId: item.id });
+          if (new_retry_count >= max_retries) {
+            logger.warn(`Removing item from sync queue after ${new_retry_count} retries:`, { itemId: item.id });
             await this.storage.removeSyncQueueItem(item.id);
             
             // If it's an auth error, stop the sync entirely
@@ -523,6 +534,15 @@ export class SyncManager {
   // Force sync (called when user manually triggers)
   async forceSync() {
     await this.sync();
+  }
+
+  // Clear all items from the sync queue (for stuck items)
+  async clearSyncQueue() {
+    const sync_queue = await this.storage.getSyncQueue();
+    for (const item of sync_queue) {
+      await this.storage.removeSyncQueueItem(item.id);
+    }
+    logger.info('Cleared sync queue', { count: sync_queue.length });
   }
   
   // Get sync status

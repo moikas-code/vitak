@@ -11,7 +11,7 @@ import { MealPresets } from "@/components/dashboard/meal-presets";
 import { api } from "@/lib/trpc/provider";
 import { track_dashboard_event } from "@/lib/analytics";
 import { useOfflineMealLogs, useOfflineInit, useConnectionStatus, useTokenRefresh } from "@/lib/offline/hooks";
-import { WifiOff, Loader2, RefreshCw } from "lucide-react";
+import { WifiOff, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SyncManager } from "@/lib/offline/sync-manager";
 
@@ -23,7 +23,7 @@ export default function DashboardPage() {
   useOfflineInit(); // Initialize offline services
   useTokenRefresh(); // Keep tokens fresh for sync
   const { meal_logs: todayMeals, is_loading } = useOfflineMealLogs();
-  const { is_online, is_syncing, unsynced_count } = useConnectionStatus();
+  const { is_online, is_syncing, unsynced_count, clearSyncQueue } = useConnectionStatus();
 
   useEffect(() => {
     track_dashboard_event('dashboard');
@@ -64,6 +64,23 @@ export default function DashboardPage() {
               >
                 <RefreshCw className="h-3 w-3 mr-1" />
                 Sync Now
+              </Button>
+            )}
+            {unsynced_count > 3 && (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={async () => {
+                  try {
+                    await clearSyncQueue();
+                  } catch (error) {
+                    console.error('Failed to clear sync queue:', error);
+                  }
+                }}
+                className="h-7 text-xs"
+              >
+                <Trash2 className="h-3 w-3 mr-1" />
+                Clear Queue ({unsynced_count})
               </Button>
             )}
             <Button
