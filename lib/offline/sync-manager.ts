@@ -216,7 +216,7 @@ export class SyncManager {
           throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
         }
         
-        const result = await response.json();
+        const result: any = await response.json();
         logger.info(' Create meal log response:', { result });
         
         // Extract the actual ID from the response
@@ -356,7 +356,7 @@ export class SyncManager {
           throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
         
-        const result = await response.json();
+        const result: any = await response.json();
         logger.info(' Create meal preset response:', { result });
         
         // Extract the actual ID from the response
@@ -410,7 +410,7 @@ export class SyncManager {
       });
       
       if (meal_logs_response.ok) {
-        const response_data = await meal_logs_response.json();
+        const response_data: any = await meal_logs_response.json();
         logger.info(' Meal logs response:', { responseData: response_data });
         const meal_logs = response_data?.result?.data?.json || [];
         logger.info(' Found meal logs from server', { count: meal_logs.length });
@@ -437,7 +437,7 @@ export class SyncManager {
       });
       
       if (settings_response.ok) {
-        const response_data = await settings_response.json();
+        const response_data: any = await settings_response.json();
         logger.info(' Settings response:', { responseData: response_data });
         const settings = response_data?.result?.data?.json;
         if (settings) {

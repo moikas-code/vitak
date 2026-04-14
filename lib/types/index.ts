@@ -1,8 +1,6 @@
 import { z } from "zod";
 
-export const vitamin_k_period_schema = z.enum(["daily", "weekly", "monthly"]);
-export type VitaminKPeriod = z.infer<typeof vitamin_k_period_schema>;
-
+// ─── Food Category ──────────────────────────────────────────────────
 export const food_category_schema = z.enum([
   "vegetables",
   "fruits",
@@ -13,8 +11,18 @@ export const food_category_schema = z.enum([
   "beverages",
   "other",
 ]);
+
 export type FoodCategory = z.infer<typeof food_category_schema>;
 
+// ─── Vitamin K Period ───────────────────────────────────────────────
+export const vitamin_k_period_schema = z.enum(["daily", "weekly", "monthly"]);
+
+export type VitaminKPeriod = z.infer<typeof vitamin_k_period_schema>;
+
+// ─── User Role ──────────────────────────────────────────────────────
+export type UserRole = "user" | "admin";
+
+// ─── Schemas (snake_case for API compatibility) ─────────────────────
 export const user_settings_schema = z.object({
   id: z.string(),
   user_id: z.string(),
@@ -22,6 +30,7 @@ export const user_settings_schema = z.object({
   weekly_limit: z.number().positive(),
   monthly_limit: z.number().positive(),
   tracking_period: vitamin_k_period_schema,
+  role: z.enum(["user", "admin"]).default("user"),
   created_at: z.date(),
   updated_at: z.date(),
 });
@@ -34,6 +43,8 @@ export const food_schema = z.object({
   category: food_category_schema,
   common_portion_size_g: z.number().positive(),
   common_portion_name: z.string(),
+  created_by: z.string().nullable().optional(),
+  updated_by: z.string().nullable().optional(),
   created_at: z.date(),
   updated_at: z.date(),
 });
@@ -82,3 +93,18 @@ export type MealPreset = z.infer<typeof meal_preset_schema>;
 export type MealPresetWithFood = MealPreset & {
   food: Food | null;
 };
+
+// ─── Audit Log Change Data ───────────────────────────────────────────
+export interface AuditLogChangeData {
+  id?: string;
+  name?: string;
+  vitamin_k_mcg_per_100g?: number;
+  category?: FoodCategory;
+  common_portion_size_g?: number;
+  common_portion_name?: string;
+  created_by?: string | null;
+  updated_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: unknown;
+}

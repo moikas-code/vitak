@@ -1,0 +1,33 @@
+name = "vitak-tracker"
+main = ".open-next/worker.js"
+compatibility_date = "2026-04-08"
+compatibility_flags = ["nodejs_compat"]
+
+routes = [
+  { pattern = "vitaktracker.com", custom_domain = true },
+  { pattern = "www.vitaktracker.com", custom_domain = true },
+]
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "vitak-tracker-db"
+database_id = "3e802905-68c6-44ff-9fec-20e452279598"
+migrations_dir = "drizzle"
+
+# Secrets (set via `wrangler secret put`):
+#   CLERK_SECRET_KEY
+#   CLERK_WEBHOOK_SECRET
+#   CLERK_JWT_KEY
+#   STRIPE_SECRET_KEY
+#   STRIPE_WEBHOOK_SECRET
+#   DISCORD_FEEDBACK_WEBHOOK_URL
+#   NEXT_PUBLIC_APP_URL
+
+# KV namespace for rate limiting
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "f8017dac02fe4a5a884fe31168599b21"

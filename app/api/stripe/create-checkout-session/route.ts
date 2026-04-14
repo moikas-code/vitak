@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
       'stripe_checkout',
       API_RATE_LIMITS.STRIPE_CHECKOUT,
       async () => {
-        const { amount } = await req.json();
+        const { amount }: { amount: number } = await req.json();
 
     // Validate amount (in cents)
     if (!amount || typeof amount !== "number" || amount < 100) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { checkRateLimit, RateLimitError, RateLimitConfig } from '@/lib/security/rate-limit-redis';
+import { checkRateLimit, RateLimitError, RateLimitConfig } from '@/lib/security/rate-limit';
 import { getSecurityHeaders } from '@/lib/security/headers';
 
 /**

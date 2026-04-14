@@ -1,6 +1,6 @@
 /**
- * Environment variable validation
- * Ensures all required environment variables are present
+ * Environment variable validation for Cloudflare Workers + D1 deployment.
+ * No more Supabase or Upstash Redis — those are replaced by D1 and CF KV.
  */
 
 import { createLogger } from "@/lib/logger";
@@ -33,41 +33,10 @@ const ENV_VARS: EnvVar[] = [
     description: 'Clerk webhook secret for user sync',
     sensitive: true,
   },
-  
-  // Supabase
-  {
-    name: 'NEXT_PUBLIC_SUPABASE_URL',
-    required: true,
-    description: 'Supabase project URL',
-  },
-  {
-    name: 'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-    required: true,
-    description: 'Supabase anonymous key for client access',
-  },
-  {
-    name: 'SUPABASE_SERVICE_ROLE_KEY',
-    required: true,
-    description: 'Supabase service role key for admin operations',
-    sensitive: true,
-  },
-  
-  // Redis (optional)
-  {
-    name: 'UPSTASH_REDIS_REST_URL',
-    required: false,
-    description: 'Upstash Redis URL for rate limiting',
-  },
-  {
-    name: 'UPSTASH_REDIS_REST_TOKEN',
-    required: false,
-    description: 'Upstash Redis token for authentication',
-    sensitive: true,
-  },
-  
+
   // Stripe (optional for donations)
   {
-    name: 'STRIPE_PUBLISHABLE_KEY',
+    name: 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY',
     required: false,
     description: 'Stripe publishable key for client-side payments',
   },
@@ -83,19 +52,25 @@ const ENV_VARS: EnvVar[] = [
     description: 'Stripe webhook secret for payment events',
     sensitive: true,
   },
-  
-  // Discord (optional for notifications)
+
+  // Discord (optional for feedback)
   {
-    name: 'DISCORD_WEBHOOK_URL',
+    name: 'DISCORD_FEEDBACK_WEBHOOK_URL',
     required: false,
-    description: 'Discord webhook URL for notifications',
+    description: 'Discord webhook URL for feedback notifications',
     sensitive: true,
+  },
+
+  // App
+  {
+    name: 'NEXT_PUBLIC_APP_URL',
+    required: false,
+    description: 'App URL for callbacks and CORS',
   },
 ];
 
 /**
  * Validate all environment variables
- * @returns Object with validation results
  */
 export function validateEnvironment() {
   const results = {
@@ -106,7 +81,7 @@ export function validateEnvironment() {
 
   for (const envVar of ENV_VARS) {
     const value = process.env[envVar.name];
-    
+
     if (!value && envVar.required) {
       results.valid = false;
       results.missing.push(envVar.name);
@@ -124,7 +99,7 @@ export function validateEnvironment() {
       logger.info(`Environment variable set: ${envVar.name} (sensitive - value hidden)`);
     }
   }
-  
+
   return results;
 }
 
@@ -136,43 +111,29 @@ export function isProduction() {
 }
 
 /**
- * Get environment variable with fallback
- */
-export function getEnvVar(name: string, fallback?: string): string {
-  const value = process.env[name];
-  if (!value && !fallback) {
-    throw new Error(`Environment variable ${name} is not set`);
-  }
-  return value || fallback!;
-}
-
-/**
  * Validate environment on startup
- * Call this in your app initialization
  */
 export function validateEnvOnStartup() {
   const results = validateEnvironment();
-  
+
   if (!results.valid) {
     logger.error('Environment validation failed', {
       missing: results.missing,
       warnings: results.warnings,
     });
-    
+
     if (isProduction()) {
-      // In production, fail fast
       throw new Error(
         `Missing required environment variables: ${results.missing.join(', ')}`
       );
     } else {
-      // In development, just warn
-      logger.warn('Running with missing environment variables - some features may not work');
+      logger.warn('Running with missing environment variables — some features may not work');
     }
   } else {
     logger.info('Environment validation passed', {
       warnings: results.warnings.length > 0 ? results.warnings : undefined,
     });
   }
-  
+
   return results;
 }

@@ -1,8 +1,9 @@
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { createServerSupabaseClient } from "@/lib/db/supabase-server";
-import { checkRateLimit, RateLimitError } from "@/lib/security/rate-limit-redis";
+import { getDb } from "@/lib/db";
+import { foodAuditLog } from "@/lib/db/schema";
+import { checkRateLimit, RateLimitError } from "@/lib/security/rate-limit";
 import { API_RATE_LIMITS } from "@/lib/api/rate-limit";
 
 export async function POST(request: NextRequest) {
@@ -15,25 +16,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: "2025-05-28.basil",
-  });
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   try {
-    // Apply rate limiting using service identifier
+    // Apply rate limiting
     try {
-      await checkRateLimit('stripe_webhook_service', 'webhook', API_RATE_LIMITS.WEBHOOK);
+      await checkRateLimit("stripe_webhook_service", "webhook", API_RATE_LIMITS.WEBHOOK);
     } catch (error) {
       if (error instanceof RateLimitError) {
-        return NextResponse.json(
-          { error: "Rate limit exceeded" },
-          { status: 429 }
-        );
+        return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
       }
       throw error;
     }
-    
+
     const body = await request.text();
     const headersList = await headers();
     const sig = headersList.get("stripe-signature");
@@ -45,17 +41,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!webhookSecret) {
-      return NextResponse.json(
-        { error: "Webhook secret not configured" },
-        { status: 500 }
-      );
-    }
-
     let event: Stripe.Event;
 
     try {
-      event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
+      event = stripe.webhooks.constructEvent(body, sig, webhookSecret!);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
       return NextResponse.json(
@@ -69,51 +58,41 @@ export async function POST(request: NextRequest) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
 
-        // If we have a user ID, we could update their donation status
         if (session.metadata?.userId && session.metadata.userId !== "anonymous") {
-          const supabase = await createServerSupabaseClient();
-          
-          // Log the donation in our audit_logs table
-          await supabase.from("audit_logs").insert({
-            user_id: session.metadata.userId,
-            action: "donation_completed",
-            details: {
-              session_id: session.id,
-              amount: session.amount_total,
-              currency: session.currency,
-              email: session.customer_details?.email,
-            },
-          });
+          try {
+            const db = await getDb();
+            // Log the donation
+            await db.insert(foodAuditLog).values({
+              foodId: "donation",
+              action: "create",
+              changedBy: session.metadata.userId,
+              newValues: JSON.stringify({
+                type: "donation_completed",
+                session_id: session.id,
+                amount: session.amount_total,
+                currency: session.currency,
+                email: session.customer_details?.email,
+              }),
+            });
+          } catch (error) {
+            console.error("[Stripe Webhook] Error logging donation:", error);
+          }
         }
 
         break;
       }
 
-      case "checkout.session.expired": {
+      case "checkout.session.expired":
+      case "payment_intent.succeeded":
+      case "payment_intent.payment_failed":
         break;
-      }
-
-      case "payment_intent.succeeded": {
-        break;
-      }
-
-      case "payment_intent.payment_failed": {
-        break;
-      }
 
       default:
-        // Unhandled event type
         break;
     }
 
     return NextResponse.json({ received: true });
   } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-
-// Stripe webhooks require the raw body
-export const runtime = "nodejs";

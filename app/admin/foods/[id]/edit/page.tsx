@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = 'force-dynamic';
+
 import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -74,7 +76,7 @@ export default function EditFoodPage() {
       form.reset({
         name: food.name,
         vitamin_k_mcg_per_100g: food.vitamin_k_mcg_per_100g,
-        category: food.category,
+        category: food.category as "vegetables" | "fruits" | "proteins" | "grains" | "dairy" | "fats_oils" | "beverages" | "other",
         common_portion_size_g: food.common_portion_size_g,
         common_portion_name: food.common_portion_name,
       });

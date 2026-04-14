@@ -7,7 +7,7 @@ import { PublicHeader } from "@/components/ui/public-header";
 import { AlertCircle, Apple, Carrot, Leaf, Search } from "lucide-react";
 import { BreadcrumbLD } from "@/components/seo/json-ld";
 
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
 export const revalidate = 86400; // Revalidate daily
 
 export const metadata: Metadata = {

@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/trpc/provider";
@@ -15,7 +17,7 @@ export default function HistoryPage() {
     const end_date = new Date();
     const start_date = new Date();
     start_date.setDate(start_date.getDate() - 7);
-    return { start_date, end_date };
+    return { start_date: start_date.toISOString(), end_date: end_date.toISOString() };
   });
 
   useEffect(() => {
@@ -54,8 +56,8 @@ export default function HistoryPage() {
         <CardHeader>
           <CardTitle>Date Range</CardTitle>
           <CardDescription>
-            Showing data from {format(dateRange.start_date, "MMM d, yyyy")} to{" "}
-            {format(dateRange.end_date, "MMM d, yyyy")}
+            Showing data from {format(new Date(dateRange.start_date), "MMM d, yyyy")} to{" "}
+            {format(new Date(dateRange.end_date), "MMM d, yyyy")}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex gap-2">
@@ -65,7 +67,7 @@ export default function HistoryPage() {
               const end_date = new Date();
               const start_date = new Date();
               start_date.setDate(start_date.getDate() - 7);
-              setDateRange({ start_date, end_date });
+              setDateRange({ start_date: start_date.toISOString(), end_date: end_date.toISOString() });
             }}
           >
             Last 7 days
@@ -76,7 +78,7 @@ export default function HistoryPage() {
               const end_date = new Date();
               const start_date = new Date();
               start_date.setDate(start_date.getDate() - 30);
-              setDateRange({ start_date, end_date });
+              setDateRange({ start_date: start_date.toISOString(), end_date: end_date.toISOString() });
             }}
           >
             Last 30 days
@@ -87,7 +89,7 @@ export default function HistoryPage() {
               const end_date = new Date();
               const start_date = new Date();
               start_date.setMonth(start_date.getMonth() - 3);
-              setDateRange({ start_date, end_date });
+              setDateRange({ start_date: start_date.toISOString(), end_date: end_date.toISOString() });
             }}
           >
             Last 3 months

@@ -31,11 +31,11 @@ export function UserSync() {
         });
         
         if (!response.ok) {
-          const data = await response.json();
+          const data: { error?: string; user_id?: string; message?: string } = await response.json();
           console.error("[UserSync] Sync error:", data.error);
           setSyncError(data.error || "Failed to sync user");
         } else {
-          const data = await response.json();
+          const data: { error?: string; user_id?: string; message?: string } = await response.json();
           console.log("[UserSync] User synced successfully:", data.user_id);
           setSyncError(null);
         }

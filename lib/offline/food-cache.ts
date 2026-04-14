@@ -23,7 +23,7 @@ export async function populateFoodCache() {
     });
     
     if (response.ok) {
-      const data = await response.json();
+      const data: { result?: { data?: { json?: any[] } } } = await response.json();
       const foods = data?.result?.data?.json || [];
       
       logger.info('Caching common foods', { count: foods.length });
@@ -60,7 +60,7 @@ export function useFoodCachePopulation() {
       
       // Cache foods in the background
       Promise.all(
-        common_foods.map(food => storage.cacheFood(food))
+        common_foods.map((food: any) => storage.cacheFood(food))
       ).then(() => {
         logger.info('Cached common foods', { count: common_foods.length });
       }).catch(error => {

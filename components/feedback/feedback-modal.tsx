@@ -63,7 +63,7 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
         }),
       });
 
-      const data = await response.json();
+      const data: { ok: boolean; error?: string; message?: string } = await response.json();
 
       if (response.status === 429) {
         toast({

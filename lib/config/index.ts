@@ -69,7 +69,7 @@ export const SECURITY_CONFIG = {
   // CORS
   ALLOWED_ORIGINS: process.env.NODE_ENV === 'development' 
     ? ['http://localhost:3000'] 
-    : [process.env.NEXT_PUBLIC_APP_URL || 'https://vitak.app'],
+    : [process.env.NEXT_PUBLIC_APP_URL || 'https://vitaktracker.com'],
 } as const;
 
 // Feature flags

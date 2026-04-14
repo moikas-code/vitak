@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = 'force-dynamic';
+
 import { useState } from "react";
 import { api } from "@/lib/trpc/provider";
 import {
@@ -27,7 +29,7 @@ import {
   ChevronUp
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
-import type { AuditLogChangeData } from "@/lib/db/types";
+import type { AuditLogChangeData } from "@/lib/types";
 
 export default function AdminAuditLogsPage() {
   const [foodIdFilter, setFoodIdFilter] = useState("");
@@ -162,8 +164,8 @@ export default function AdminAuditLogsPage() {
                 action: string;
                 changed_by: string;
                 changed_at: string;
-                old_values: AuditLogChangeData | null;
-                new_values: AuditLogChangeData | null;
+                old_values: any;
+                new_values: any;
                 ip_address: string | null;
                 user_agent: string | null;
                 food?: { name: string; };
@@ -299,8 +301,8 @@ export default function AdminAuditLogsPage() {
             action: string;
             changed_by: string;
             changed_at: string;
-            old_values: AuditLogChangeData | null;
-            new_values: AuditLogChangeData | null;
+            old_values: any;
+            new_values: any;
             ip_address: string | null;
             user_agent: string | null;
             food?: { name: string; };

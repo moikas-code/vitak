@@ -32,6 +32,12 @@ yarn-error.log*
 # vercel
 .vercel
 
+# cloudflare
+.wrangler/
+.open-next/
+.local/
+.dev.vars
+
 # typescript
 *.tsbuildinfo
 .tsbuildinfo
@@ -46,3 +52,7 @@ next-env.d.ts
 **/public/worker-*.js.map
 # clerk configuration (can include secrets)
 /.clerk/
+
+# drizzle
+drizzle/meta/
+*.db

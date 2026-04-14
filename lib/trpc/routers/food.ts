@@ -1,25 +1,25 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 import { food_category_schema } from "@/lib/types";
-import { createSupabaseClientWithUser, createPublicSupabaseClient } from "@/lib/db/supabase-with-user";
+import { getDb } from "@/lib/db";
+import { foods } from "@/lib/db/schema";
+import { eq, like, or, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import { checkRateLimit, RateLimitError, RATE_LIMITS } from "@/lib/security/rate-limit-redis";
-import type { Database } from "@/lib/db/types";
+import { checkRateLimit, RateLimitError, RATE_LIMITS } from "@/lib/security/rate-limit";
+import { mapFood } from "@/lib/db/mappers";
 
 export const foodRouter = createTRPCRouter({
   search: protectedProcedure
     .input(
       z.object({
         query: z.string().min(1).max(100).transform((val) => {
-          // Escape special characters that have meaning in ILIKE patterns
-          return val.replace(/[%_\\]/g, '\\$&');
+          return val.replace(/[%_\\]/g, "\\$&");
         }),
         category: food_category_schema.optional(),
         limit: z.number().min(1).max(50).default(20),
       })
     )
     .query(async ({ ctx, input }) => {
-      // Check rate limit
       try {
         await checkRateLimit(ctx.session.userId, "food_search", RATE_LIMITS.FOOD_SEARCH);
       } catch (error) {
@@ -31,58 +31,42 @@ export const foodRouter = createTRPCRouter({
         }
         throw error;
       }
-      
-      const supabase = await createSupabaseClientWithUser(ctx.session.userId);
-      let query = supabase
-        .from("foods")
-        .select("*")
-        .ilike("name", `%${input.query}%`)
-        .limit(input.limit)
-        .order("name");
 
+      const db = await getDb();
+
+      const conditions = [like(foods.name, `%${input.query}%`)];
       if (input.category) {
-        query = query.eq("category", input.category);
+        conditions.push(eq(foods.category, input.category));
       }
 
-      const { data, error } = await query;
+      const results = await db
+        .select()
+        .from(foods)
+        .where(and(...conditions))
+        .limit(input.limit)
+        .orderBy(foods.name);
 
-      if (error) {
-        console.error('[Food.search] Error:', error);
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to search foods",
-        });
-      }
-
-      return data.map((food: Database['public']['Tables']['foods']['Row']) => ({
-        ...food,
-        created_at: new Date(food.created_at),
-        updated_at: new Date(food.updated_at),
-      }));
+      return results.map(mapFood);
     }),
 
   getById: protectedProcedure
     .input(z.string())
-    .query(async ({ ctx, input }) => {
-      const supabase = await createSupabaseClientWithUser(ctx.session.userId);
-      const { data, error } = await supabase
-        .from("foods")
-        .select("*")
-        .eq("id", input)
-        .single();
+    .query(async ({ ctx: _ctx, input }) => {
+      const db = await getDb();
+      const food = await db
+        .select()
+        .from(foods)
+        .where(eq(foods.id, input))
+        .get();
 
-      if (error) {
+      if (!food) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Food not found",
         });
       }
 
-      return {
-        ...data,
-        created_at: new Date(data.created_at),
-        updated_at: new Date(data.updated_at),
-      };
+      return mapFood(food);
     }),
 
   getCategories: protectedProcedure.query(async ({ ctx: _ctx }) => {
@@ -99,29 +83,22 @@ export const foodRouter = createTRPCRouter({
   }),
 
   getCommonFoods: publicProcedure.query(async () => {
-    const supabase = createPublicSupabaseClient();
-    
-    // Get a larger selection of common foods from different categories
-    // These are foods that users are likely to log frequently
-    const { data, error } = await supabase
-      .from("foods")
-      .select("*")
-      .or(`name.ilike.%spinach%,name.ilike.%kale%,name.ilike.%broccoli%,name.ilike.%lettuce%,name.ilike.%cabbage%,name.ilike.%chicken%,name.ilike.%beef%,name.ilike.%salmon%,name.ilike.%egg%,name.ilike.%milk%,name.ilike.%rice%,name.ilike.%bread%,name.ilike.%potato%,name.ilike.%tomato%,name.ilike.%carrot%,name.ilike.%apple%,name.ilike.%banana%,name.ilike.%cheese%,name.ilike.%yogurt%,name.ilike.%pasta%`)
+    const db = await getDb();
+
+    const commonNames = [
+      "spinach", "kale", "broccoli", "lettuce", "cabbage",
+      "chicken", "beef", "salmon", "egg", "milk",
+      "rice", "bread", "potato", "tomato", "carrot",
+      "apple", "banana", "cheese", "yogurt", "pasta",
+    ];
+
+    const results = await db
+      .select()
+      .from(foods)
+      .where(or(...commonNames.map((name) => like(foods.name, `%${name}%`))))
       .limit(100)
-      .order("name");
-    
-    if (error) {
-      console.error('[Food.getCommonFoods] Error:', error);
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to fetch common foods",
-      });
-    }
-    
-    return data.map((food) => ({
-      ...food,
-      created_at: new Date(food.created_at),
-      updated_at: new Date(food.updated_at),
-    }));
+      .orderBy(foods.name);
+
+    return results.map(mapFood);
   }),
 });

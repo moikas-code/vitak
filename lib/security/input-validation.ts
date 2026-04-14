@@ -3,11 +3,11 @@ import { z } from "zod";
 /**
  * Security patterns for input validation
  */
-const SQL_INJECTION_PATTERN = /((\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|CREATE|ALTER|EXEC|EXECUTE|TRUNCATE|DECLARE|CAST|SET|FETCH|CURSOR|HAVING|MERGE)\b)|(--|\/\*|\*\/|@@|@|char|nchar|varchar|nvarchar|alter|begin|cast|create|cursor|declare|delete|drop|end|exec|execute|fetch|insert|kill|select|sys|sysobjects|syscolumns|table|update))/gi;
+const SQL_INJECTION_PATTERN = /((\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|CREATE|ALTER|EXEC|EXECUTE|TRUNCATE|DECLARE|CAST|SET|FETCH|CURSOR|HAVING|MERGE)\b)|(--|\/\*|\*\/|@@|@|char|nchar|varchar|nvarchar|alter|begin|cast|create|cursor|declare|delete|drop|end|exec|execute|fetch|insert|kill|select|sys|sysobjects|syscolumns|table|update))/i;
 
-const SCRIPT_INJECTION_PATTERN = /(<script[\s\S]*?>[\s\S]*?<\/script>|javascript:|onerror=|onload=|onclick=|onmouseover=|<iframe|<embed|<object|eval\(|expression\(|prompt\(|alert\(|confirm\()/gi;
+const SCRIPT_INJECTION_PATTERN = /(<script[\s\S]*?>[\s\S]*?<\/script>|javascript:|onerror=|onload=|onclick=|onmouseover=|<iframe|<embed|<object|eval\(|expression\(|prompt\(|alert\(|confirm\()/i;
 
-const HTML_TAG_PATTERN = /<[^>]+>/g;
+const HTML_TAG_PATTERN = /<[^>]+>/;
 
 /**
  * Validates feedback text for security issues

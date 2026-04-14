@@ -3,9 +3,11 @@ import { Footer } from "@/components/ui/footer";
 import { PublicHeader } from "@/components/ui/public-header";
 import { BreadcrumbLD } from "@/components/seo/json-ld";
 import { VitaminKCalculatorClient } from "@/components/vitamin-k-calculator-client";
-import { createServerSupabaseClient } from "@/lib/db/supabase-server";
+import { getDb } from "@/lib/db";
+import { foods } from "@/lib/db/schema";
+import { like, or } from "drizzle-orm";
 
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
 export const revalidate = 86400; // Revalidate daily
 
 export const metadata: Metadata = {
@@ -34,36 +36,36 @@ export default async function VitaminKCalculatorPage() {
     { id: "10", name: "White rice", vitamin_k_mcg_per_100g: 0 },
   ];
 
+  const commonFoodNames = [
+    'Spinach (cooked)',
+    'Kale (cooked)',
+    'Broccoli (cooked)',
+    'Romaine lettuce',
+    'Cabbage (raw)',
+    'Chicken breast',
+    'Salmon',
+    'Eggs',
+    'Milk (whole)',
+    'White rice'
+  ];
+
   let commonFoods = fallbackFoods;
   
   // Try to fetch from database
   try {
-    const supabase = await createServerSupabaseClient();
-    const commonFoodNames = [
-      'Spinach (cooked)',
-      'Kale (cooked)',
-      'Broccoli (cooked)',
-      'Romaine lettuce',
-      'Cabbage (raw)',
-      'Chicken breast',
-      'Salmon',
-      'Eggs',
-      'Milk (whole)',
-      'White rice'
-    ];
+    const db = await getDb();
+    const data = await db
+      .select({ id: foods.id, name: foods.name, vitamin_k_mcg_per_100g: foods.vitaminKMcgPer100g })
+      .from(foods)
+      .where(or(...commonFoodNames.map((name) => like(foods.name, `%${name}%`))))
+      .orderBy(foods.name)
+      .all();
     
-    const { data, error } = await supabase
-      .from("foods")
-      .select("id, name, vitamin_k_mcg_per_100g")
-      .in("name", commonFoodNames)
-      .order("name");
-    
-    if (!error && data && data.length > 0) {
+    if (data && data.length > 0) {
       commonFoods = data;
     }
   } catch (error) {
     console.error("Failed to fetch common foods:", error);
-    // Use fallback data
   }
 
   return (

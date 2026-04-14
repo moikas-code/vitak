@@ -1,8 +1,11 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
-import { createSupabaseClientWithUser } from "@/lib/db/supabase-with-user";
+import { getDb } from "@/lib/db";
+import { mealLogs, foods } from "@/lib/db/schema";
+import { eq, gte, lte, and, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import { checkRateLimit, RATE_LIMITS, RateLimitError } from "@/lib/security/rate-limit-redis";
+import { checkRateLimit, RateLimitError, RATE_LIMITS } from "@/lib/security/rate-limit";
+import { mapFood, mapMealLog } from "@/lib/db/mappers";
 
 export const mealLogRouter = createTRPCRouter({
   add: protectedProcedure
@@ -13,7 +16,6 @@ export const mealLogRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      // Check rate limit
       try {
         await checkRateLimit(ctx.session.userId, "meal_log", RATE_LIMITS.MEAL_LOG);
       } catch (error) {
@@ -26,158 +28,260 @@ export const mealLogRouter = createTRPCRouter({
         throw error;
       }
 
-      const supabase = await createSupabaseClientWithUser(ctx.session.userId);
-      
-      // First, get the food details to calculate vitamin K
-      const { data: food, error: foodError } = await supabase
-        .from("foods")
-        .select("vitamin_k_mcg_per_100g")
-        .eq("id", input.food_id)
-        .single();
+      const db = await getDb();
 
-      if (foodError) {
-        console.error('[MealLog.add] Food lookup error:', foodError);
+      const food = await db
+        .select()
+        .from(foods)
+        .where(eq(foods.id, input.food_id))
+        .get();
+
+      if (!food) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Food not found",
         });
       }
 
-      // Calculate vitamin K consumed
-      const vitamin_k_consumed_mcg = (input.portion_size_g / 100) * food.vitamin_k_mcg_per_100g;
+      const vitamin_k_consumed_mcg = Math.round(
+        (input.portion_size_g / 100) * food.vitaminKMcgPer100g
+      );
 
-      // Insert the meal log with proper user isolation
-      const { data, error } = await supabase
-        .from("meal_logs")
-        .insert({
-          user_id: ctx.session.userId,
-          food_id: input.food_id,
-          portion_size_g: input.portion_size_g,
-          vitamin_k_consumed_mcg,
+      const [mealLog] = await db
+        .insert(mealLogs)
+        .values({
+          userId: ctx.session.userId,
+          foodId: input.food_id,
+          portionSizeG: input.portion_size_g,
+          vitaminKConsumedMcg: vitamin_k_consumed_mcg,
         })
-        .select()
-        .single();
+        .returning();
 
-      if (error) {
-        console.error('[MealLog.add] Insert error:', error);
+      if (!mealLog) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to log meal",
+          message: "Failed to create meal log",
         });
       }
 
+      const foodMapped = mapFood(food);
       return {
-        ...data,
-        logged_at: new Date(data.logged_at),
-        created_at: new Date(data.created_at),
+        ...mapMealLog(mealLog),
+        food: foodMapped,
       };
     }),
-
-  getToday: protectedProcedure.query(async ({ ctx }) => {
-    // Check rate limit for read operations
-    try {
-      await checkRateLimit(ctx.session.userId, "read", RATE_LIMITS.READ);
-    } catch (error) {
-      if (error instanceof RateLimitError) {
-        throw new TRPCError({
-          code: "TOO_MANY_REQUESTS",
-          message: "Rate limit exceeded. Please try again later.",
-        });
-      }
-      throw error;
-    }
-
-    const supabase = await createSupabaseClientWithUser(ctx.session.userId);
-    
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
-
-    const { data, error } = await supabase
-      .from("meal_logs")
-      .select("*, food:foods(*)")
-      .eq("user_id", ctx.session.userId)
-      .gte("logged_at", todayStart.toISOString())
-      .lte("logged_at", todayEnd.toISOString())
-      .order("logged_at", { ascending: false });
-
-    if (error) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to fetch today's meals",
-      });
-    }
-
-    return data.map((log) => ({
-      ...log,
-      logged_at: new Date(log.logged_at),
-      created_at: new Date(log.created_at),
-    }));
-  }),
 
   getByDateRange: protectedProcedure
     .input(
       z.object({
-        start_date: z.date(),
-        end_date: z.date(),
+        start_date: z.string(),
+        end_date: z.string(),
       })
     )
     .query(async ({ ctx, input }) => {
-      const supabase = await createSupabaseClientWithUser(ctx.session.userId);
-      const { data, error } = await supabase
-        .from("meal_logs")
-        .select("*, food:foods(*)")
-        .eq("user_id", ctx.session.userId)
-        .gte("logged_at", input.start_date.toISOString())
-        .lte("logged_at", input.end_date.toISOString())
-        .order("logged_at", { ascending: false });
+      const db = await getDb();
 
-      if (error) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to fetch meal logs",
-        });
-      }
+      const results = await db
+        .select({
+          id: mealLogs.id,
+          userId: mealLogs.userId,
+          foodId: mealLogs.foodId,
+          portionSizeG: mealLogs.portionSizeG,
+          vitaminKConsumedMcg: mealLogs.vitaminKConsumedMcg,
+          loggedAt: mealLogs.loggedAt,
+          createdAt: mealLogs.createdAt,
+          food: {
+            id: foods.id,
+            name: foods.name,
+            category: foods.category,
+            vitaminKMcgPer100g: foods.vitaminKMcgPer100g,
+            commonPortionSizeG: foods.commonPortionSizeG,
+            commonPortionName: foods.commonPortionName,
+            createdBy: foods.createdBy,
+            updatedBy: foods.updatedBy,
+            createdAt: foods.createdAt,
+            updatedAt: foods.updatedAt,
+          },
+        })
+        .from(mealLogs)
+        .innerJoin(foods, eq(mealLogs.foodId, foods.id))
+        .where(
+          and(
+            eq(mealLogs.userId, ctx.session.userId),
+            gte(mealLogs.loggedAt, input.start_date),
+            lte(mealLogs.loggedAt, input.end_date)
+          )
+        )
+        .orderBy(desc(mealLogs.loggedAt));
 
-      return data.map((log) => ({
-        ...log,
-        logged_at: new Date(log.logged_at),
-        created_at: new Date(log.created_at),
+      return results.map((log) => ({
+        id: log.id,
+        user_id: log.userId,
+        food_id: log.foodId,
+        portion_size_g: log.portionSizeG,
+        vitamin_k_consumed_mcg: log.vitaminKConsumedMcg,
+        logged_at: new Date(log.loggedAt),
+        created_at: new Date(log.createdAt),
+        food: {
+          id: log.food.id,
+          name: log.food.name,
+          vitamin_k_mcg_per_100g: log.food.vitaminKMcgPer100g,
+          category: log.food.category,
+          common_portion_size_g: log.food.commonPortionSizeG,
+          common_portion_name: log.food.commonPortionName,
+          created_by: log.food.createdBy ?? null,
+          updated_by: log.food.updatedBy ?? null,
+          created_at: new Date(log.food.createdAt),
+          updated_at: new Date(log.food.updatedAt),
+        },
       }));
     }),
+
+  getByDate: protectedProcedure
+    .input(z.string())
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+
+      const startOfDay = `${input}T00:00:00`;
+      const endOfDay = `${input}T23:59:59`;
+
+      const results = await db
+        .select({
+          id: mealLogs.id,
+          userId: mealLogs.userId,
+          foodId: mealLogs.foodId,
+          portionSizeG: mealLogs.portionSizeG,
+          vitaminKConsumedMcg: mealLogs.vitaminKConsumedMcg,
+          loggedAt: mealLogs.loggedAt,
+          createdAt: mealLogs.createdAt,
+          food: {
+            id: foods.id,
+            name: foods.name,
+            category: foods.category,
+            vitaminKMcgPer100g: foods.vitaminKMcgPer100g,
+            commonPortionSizeG: foods.commonPortionSizeG,
+            commonPortionName: foods.commonPortionName,
+            createdBy: foods.createdBy,
+            updatedBy: foods.updatedBy,
+            createdAt: foods.createdAt,
+            updatedAt: foods.updatedAt,
+          },
+        })
+        .from(mealLogs)
+        .innerJoin(foods, eq(mealLogs.foodId, foods.id))
+        .where(
+          and(
+            eq(mealLogs.userId, ctx.session.userId),
+            gte(mealLogs.loggedAt, startOfDay),
+            lte(mealLogs.loggedAt, endOfDay)
+          )
+        )
+        .orderBy(desc(mealLogs.loggedAt));
+
+      return results.map((log) => ({
+        id: log.id,
+        user_id: log.userId,
+        food_id: log.foodId,
+        portion_size_g: log.portionSizeG,
+        vitamin_k_consumed_mcg: log.vitaminKConsumedMcg,
+        logged_at: new Date(log.loggedAt),
+        created_at: new Date(log.createdAt),
+        food: {
+          id: log.food.id,
+          name: log.food.name,
+          vitamin_k_mcg_per_100g: log.food.vitaminKMcgPer100g,
+          category: log.food.category,
+          common_portion_size_g: log.food.commonPortionSizeG,
+          common_portion_name: log.food.commonPortionName,
+          created_by: log.food.createdBy ?? null,
+          updated_by: log.food.updatedBy ?? null,
+          created_at: new Date(log.food.createdAt),
+          updated_at: new Date(log.food.updatedAt),
+        },
+      }));
+    }),
+
+  getToday: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999).toISOString();
+
+    const results = await db
+      .select({
+        id: mealLogs.id,
+        userId: mealLogs.userId,
+        foodId: mealLogs.foodId,
+        portionSizeG: mealLogs.portionSizeG,
+        vitaminKConsumedMcg: mealLogs.vitaminKConsumedMcg,
+        loggedAt: mealLogs.loggedAt,
+        createdAt: mealLogs.createdAt,
+        food: {
+          id: foods.id,
+          name: foods.name,
+          category: foods.category,
+          vitaminKMcgPer100g: foods.vitaminKMcgPer100g,
+          commonPortionSizeG: foods.commonPortionSizeG,
+          commonPortionName: foods.commonPortionName,
+          createdBy: foods.createdBy,
+          updatedBy: foods.updatedBy,
+          createdAt: foods.createdAt,
+          updatedAt: foods.updatedAt,
+        },
+      })
+      .from(mealLogs)
+      .innerJoin(foods, eq(mealLogs.foodId, foods.id))
+      .where(
+        and(
+          eq(mealLogs.userId, ctx.session.userId),
+          gte(mealLogs.loggedAt, startOfDay),
+          lte(mealLogs.loggedAt, endOfDay)
+        )
+      )
+      .orderBy(desc(mealLogs.loggedAt));
+
+    return results.map((log) => ({
+      id: log.id,
+      user_id: log.userId,
+      food_id: log.foodId,
+      portion_size_g: log.portionSizeG,
+      vitamin_k_consumed_mcg: log.vitaminKConsumedMcg,
+      logged_at: new Date(log.loggedAt),
+      created_at: new Date(log.createdAt),
+      food: {
+        id: log.food.id,
+        name: log.food.name,
+        vitamin_k_mcg_per_100g: log.food.vitaminKMcgPer100g,
+        category: log.food.category,
+        common_portion_size_g: log.food.commonPortionSizeG,
+        common_portion_name: log.food.commonPortionName,
+        created_by: log.food.createdBy ?? null,
+        updated_by: log.food.updatedBy ?? null,
+        created_at: new Date(log.food.createdAt),
+        updated_at: new Date(log.food.updatedAt),
+      },
+    }));
+  }),
 
   delete: protectedProcedure
     .input(z.string())
     .mutation(async ({ ctx, input }) => {
-      const supabase = await createSupabaseClientWithUser(ctx.session.userId);
-      // First verify the meal belongs to the user
-      const { data: mealLog, error: fetchError } = await supabase
-        .from("meal_logs")
-        .select("user_id")
-        .eq("id", input)
-        .single();
+      const db = await getDb();
 
-      if (fetchError || mealLog.user_id !== ctx.session.userId) {
+      const log = await db
+        .select()
+        .from(mealLogs)
+        .where(eq(mealLogs.id, input))
+        .get();
+
+      if (!log || log.userId !== ctx.session.userId) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Meal log not found",
         });
       }
 
-      // Delete the meal log
-      const { error } = await supabase
-        .from("meal_logs")
-        .delete()
-        .eq("id", input);
-
-      if (error) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to delete meal log",
-        });
-      }
+      await db.delete(mealLogs).where(eq(mealLogs.id, input));
 
       return { success: true };
     }),

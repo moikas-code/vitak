@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = 'force-dynamic';
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/trpc/provider";
@@ -31,7 +33,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/lib/hooks/use-toast";
-import type { FoodCategory } from "@/lib/db/types";
+import type { FoodCategory } from "@/lib/types";
 import { 
   Search, 
   Plus, 

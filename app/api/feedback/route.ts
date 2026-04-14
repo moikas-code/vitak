@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { checkRateLimit, RateLimitError, RATE_LIMITS } from "@/lib/security/rate-limit-redis";
+import { checkRateLimit, RateLimitError, RATE_LIMITS } from "@/lib/security/rate-limit";
 
 
 export async function POST(req: NextRequest) {
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     const user = await currentUser();
     const username = user?.username || user?.firstName || "Anonymous";
     
-    const { rating, feedback } = await req.json();
+    const { rating, feedback }: { rating: number; feedback: string } = await req.json();
     
     // Validate input
     if (

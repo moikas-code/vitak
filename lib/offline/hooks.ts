@@ -214,11 +214,11 @@ export function useOfflineFoodSearch(search: string) {
     try {
       // Always try to use server data if available
       if (server_query.data && !server_query.isError) {
-        setFoods(server_query.data);
+        setFoods(server_query.data as any);
         
         // Cache the results
         for (const food of server_query.data) {
-          await storage.cacheFood(food);
+          await storage.cacheFood(food as any);
         }
       } else {
         // Search in cached foods
@@ -456,11 +456,11 @@ export function useOfflineMealPresets() {
     try {
       // Always try to use server data if available
       if (server_query.data && !server_query.isError) {
-        setMealPresets(server_query.data);
+        setMealPresets(server_query.data as any);
         
         // Cache the presets for offline use
         for (const preset of server_query.data) {
-          await storage.saveMealPreset(preset);
+          await storage.saveMealPreset(preset as any);
         }
         setIsLoading(false);
         return;

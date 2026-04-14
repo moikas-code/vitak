@@ -59,7 +59,7 @@ export function DonateModal({ isOpen, onClose }: DonateModalProps) {
         throw new Error("Failed to create checkout session");
       }
 
-      const { sessionId } = await response.json();
+      const { sessionId }: { sessionId: string } = await response.json();
 
       // Redirect to Stripe Checkout
       const stripe = await getStripe();

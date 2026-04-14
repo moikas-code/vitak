@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -7,7 +9,9 @@ import { PublicHeader } from "@/components/ui/public-header";
 import { PrintButton } from "@/components/ui/print-button";
 import { AlertCircle } from "lucide-react";
 import { BreadcrumbLD } from "@/components/seo/json-ld";
-import { createClient } from "@supabase/supabase-js";
+import { getDb } from "@/lib/db";
+import { foods } from "@/lib/db/schema";
+import { desc } from "drizzle-orm";
 
 export const metadata: Metadata = {
   title: "Warfarin Food Chart - Printable Vitamin K Food List",
@@ -44,30 +48,28 @@ function format_food_name(name: string, portion_name: string): string {
 
 async function get_food_categories(): Promise<FoodCategory[]> {
   try {
-    // Use direct Supabase client for static generation
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    
-    const { data: foods, error } = await supabase
-      .from("foods")
-      .select("name, vitamin_k_mcg_per_100g, common_portion_size_g, common_portion_name")
-      .order("vitamin_k_mcg_per_100g", { ascending: false });
+    const db = await getDb();
+    const allFoods = await db
+      .select({
+        name: foods.name,
+        vitaminKMcgPer100g: foods.vitaminKMcgPer100g,
+        commonPortionSizeG: foods.commonPortionSizeG,
+        commonPortionName: foods.commonPortionName,
+      })
+      .from(foods)
+      .orderBy(desc(foods.vitaminKMcgPer100g));
 
-    if (error || !foods) {
-      console.error("Failed to fetch foods:", error);
+    if (!allFoods || allFoods.length === 0) {
       return get_fallback_categories();
     }
 
-    // Calculate vitamin K per serving for each food
-    const foods_with_serving_values = foods.map(food => ({
+    const foods_with_serving_values = allFoods.map(food => ({
       name: food.name,
       vitamin_k_per_serving: calculate_vitamin_k_per_serving(
-        food.vitamin_k_mcg_per_100g,
-        food.common_portion_size_g
+        food.vitaminKMcgPer100g,
+        food.commonPortionSizeG
       ),
-      formatted_name: format_food_name(food.name, food.common_portion_name)
+      formatted_name: format_food_name(food.name, food.commonPortionName)
     }));
 
     // Categorize foods by vitamin K per serving

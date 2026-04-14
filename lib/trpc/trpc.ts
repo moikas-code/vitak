@@ -1,59 +1,60 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import { auth } from "@clerk/nextjs/server";
-import { verifyToken } from '@clerk/backend';
+import { verifyToken } from "@clerk/backend";
 import superjson from "superjson";
 import { ZodError } from "zod";
-import { supabaseServiceRole } from "@/lib/db/supabase-server";
-import type { UserRole } from "@/lib/db/types";
+import { getDb } from "@/lib/db";
+import type { UserRole } from "@/lib/types";
+import { eq } from "drizzle-orm";
+import { userSettings } from "@/lib/db/schema";
 import { randomUUID } from "crypto";
 
 export const createTRPCContext = async (opts: { headers: Headers }) => {
-  // Generate or extract correlation ID
-  const correlationId = opts.headers.get('x-correlation-id') || randomUUID();
-  
+  const correlationId = opts.headers.get("x-correlation-id") || randomUUID();
+
   // First try standard Clerk auth (cookie-based)
   let session = await auth();
   let userRole: UserRole | null = null;
-  
+
   // If no session from cookies, check for Bearer token
   if (!session?.userId) {
-    const authorization = opts.headers.get('authorization');
-    if (authorization?.startsWith('Bearer ')) {
+    const authorization = opts.headers.get("authorization");
+    if (authorization?.startsWith("Bearer ")) {
       const token = authorization.slice(7);
       try {
-        // Verify the token with Clerk
         const jwt_payload = await verifyToken(token, {
           jwtKey: process.env.CLERK_JWT_KEY || process.env.CLERK_SECRET_KEY,
-          authorizedParties: process.env.CLERK_AUTHORIZED_PARTIES?.split(',') || [],
+          authorizedParties: process.env.CLERK_AUTHORIZED_PARTIES?.split(",") || [],
         });
         if (jwt_payload && jwt_payload.sub) {
-          // Create a session-like object from the JWT
           session = {
             userId: jwt_payload.sub,
-            sessionId: jwt_payload.sid || '',
+            sessionId: jwt_payload.sid || "",
             sessionClaims: jwt_payload,
           } as typeof session;
         }
       } catch (error) {
-        console.warn('[tRPC] Failed to verify Bearer token:', error);
-        console.warn('[tRPC] Token length:', token.length);
-        console.warn('[tRPC] JWT Key available:', !!process.env.CLERK_JWT_KEY);
-        console.warn('[tRPC] Secret Key available:', !!process.env.CLERK_SECRET_KEY);
+        console.warn("[tRPC] Failed to verify Bearer token:", error);
       }
     }
   }
-  
+
   // Fetch user role if authenticated
   if (session?.userId) {
-    const { data } = await supabaseServiceRole
-      .from("user_settings")
-      .select("role")
-      .eq("user_id", session.userId)
-      .single();
-    
-    userRole = data?.role || null;
+    try {
+      const db = await getDb();
+      const settings = await db
+        .select({ role: userSettings.role })
+        .from(userSettings)
+        .where(eq(userSettings.userId, session.userId))
+        .get();
+
+      userRole = settings?.role || null;
+    } catch {
+      // If settings don't exist yet, role stays null
+    }
   }
-  
+
   return {
     session,
     userRole,
@@ -99,14 +100,14 @@ const enforceUserIsAdmin = t.middleware(({ ctx, next }) => {
   if (!ctx.session?.userId) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
-  
+
   if (ctx.userRole !== "admin") {
-    throw new TRPCError({ 
+    throw new TRPCError({
       code: "FORBIDDEN",
-      message: "Admin access required"
+      message: "Admin access required",
     });
   }
-  
+
   return next({
     ctx: {
       session: { ...ctx.session, userId: ctx.session.userId },

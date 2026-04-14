@@ -1,8 +1,10 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
-import { createSupabaseClientWithUser } from "@/lib/db/supabase-with-user";
+import { getDb } from "@/lib/db";
+import { mealPresets, foods, mealLogs } from "@/lib/db/schema";
+import { eq, and, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import { checkRateLimit, RATE_LIMITS, RateLimitError } from "@/lib/security/rate-limit-redis";
+import { checkRateLimit, RATE_LIMITS, RateLimitError } from "@/lib/security/rate-limit";
 
 export const mealPresetRouter = createTRPCRouter({
   create: protectedProcedure
@@ -14,7 +16,6 @@ export const mealPresetRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      // Check rate limit
       try {
         await checkRateLimit(ctx.session.userId, "preset_create", RATE_LIMITS.MEAL_LOG);
       } catch (error) {
@@ -27,80 +28,77 @@ export const mealPresetRouter = createTRPCRouter({
         throw error;
       }
 
-      const supabase = await createSupabaseClientWithUser(ctx.session.userId);
-      
-      // First, get the food details to calculate vitamin K
-      const { data: food, error: foodError } = await supabase
-        .from("foods")
-        .select("vitamin_k_mcg_per_100g")
-        .eq("id", input.food_id)
-        .single();
+      const db = await getDb();
 
-      if (foodError) {
+      // Get food details
+      const food = await db
+        .select()
+        .from(foods)
+        .where(eq(foods.id, input.food_id))
+        .get();
+
+      if (!food) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Food not found",
         });
       }
 
-      // Calculate vitamin K for the preset
-      const vitamin_k_mcg = (input.portion_size_g / 100) * food.vitamin_k_mcg_per_100g;
+      const vitamin_k_mcg = Math.round(
+        (input.portion_size_g / 100) * food.vitaminKMcgPer100g
+      );
 
-      // Check if user already has 20 presets (limit)
-      const { count, error: countError } = await supabase
-        .from("meal_presets")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", ctx.session.userId);
+      // Check preset limit (max 20)
+      const presetCount = await db
+        .select({ id: mealPresets.id })
+        .from(mealPresets)
+        .where(eq(mealPresets.userId, ctx.session.userId))
+        .all();
 
-      if (countError) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to check preset count",
-        });
-      }
-
-      if (count && count >= 20) {
+      if (presetCount.length >= 20) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Maximum preset limit (20) reached. Please delete some presets first.",
         });
       }
 
-      // Insert the preset
-      const { data, error } = await supabase
-        .from("meal_presets")
-        .insert({
-          user_id: ctx.session.userId,
-          name: input.name,
-          food_id: input.food_id,
-          portion_size_g: input.portion_size_g,
-          vitamin_k_mcg,
-        })
-        .select()
-        .single();
+      try {
+        const [preset] = await db
+          .insert(mealPresets)
+          .values({
+            userId: ctx.session.userId,
+            name: input.name,
+            foodId: input.food_id,
+            portionSizeG: input.portion_size_g,
+            vitaminKMcg: vitamin_k_mcg,
+          })
+          .returning();
 
-      if (error) {
-        if (error.code === "23505") { // Unique constraint violation
+        if (!preset) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to create preset",
+          });
+        }
+
+        return {
+          ...preset,
+          created_at: new Date(preset.createdAt),
+          updated_at: new Date(preset.updatedAt),
+        };
+      } catch (error: unknown) {
+        // SQLite unique constraint error
+        if (error instanceof Error && error.message?.includes("UNIQUE constraint failed")) {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: "A preset with this name already exists",
           });
         }
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create preset",
-        });
+        throw error;
       }
-
-      return {
-        ...data,
-        created_at: new Date(data.created_at),
-        updated_at: new Date(data.updated_at),
-      };
     }),
 
   getAll: protectedProcedure.query(async ({ ctx }) => {
-    // Check rate limit
     try {
       await checkRateLimit(ctx.session.userId, "read", RATE_LIMITS.READ);
     } catch (error) {
@@ -113,60 +111,67 @@ export const mealPresetRouter = createTRPCRouter({
       throw error;
     }
 
-    const supabase = await createSupabaseClientWithUser(ctx.session.userId);
-    
-    const { data, error } = await supabase
-      .from("meal_presets")
-      .select("*, food:foods(*)")
-      .eq("user_id", ctx.session.userId)
-      .order("usage_count", { ascending: false })
-      .order("created_at", { ascending: false });
+    const db = await getDb();
 
-    if (error) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to fetch presets",
-      });
-    }
+    const results = await db
+      .select({
+        id: mealPresets.id,
+        userId: mealPresets.userId,
+        name: mealPresets.name,
+        foodId: mealPresets.foodId,
+        portionSizeG: mealPresets.portionSizeG,
+        vitaminKMcg: mealPresets.vitaminKMcg,
+        usageCount: mealPresets.usageCount,
+        createdAt: mealPresets.createdAt,
+        updatedAt: mealPresets.updatedAt,
+        food: {
+          id: foods.id,
+          name: foods.name,
+          category: foods.category,
+          vitaminKMcgPer100g: foods.vitaminKMcgPer100g,
+          commonPortionSizeG: foods.commonPortionSizeG,
+          commonPortionName: foods.commonPortionName,
+        },
+      })
+      .from(mealPresets)
+      .innerJoin(foods, eq(mealPresets.foodId, foods.id))
+      .where(eq(mealPresets.userId, ctx.session.userId))
+      .orderBy(desc(mealPresets.usageCount), desc(mealPresets.createdAt));
 
-    return data.map((preset) => ({
+    return results.map((preset) => ({
       ...preset,
-      created_at: new Date(preset.created_at),
-      updated_at: new Date(preset.updated_at),
+      created_at: new Date(preset.createdAt),
+      updated_at: new Date(preset.updatedAt),
+      food: {
+        ...preset.food,
+        created_at: new Date(),
+        updated_at: new Date(),
+      },
     }));
   }),
 
   delete: protectedProcedure
     .input(z.string())
     .mutation(async ({ ctx, input }) => {
-      const supabase = await createSupabaseClientWithUser(ctx.session.userId);
-      
-      // First verify the preset belongs to the user
-      const { data: preset, error: fetchError } = await supabase
-        .from("meal_presets")
-        .select("user_id")
-        .eq("id", input)
-        .single();
+      const db = await getDb();
 
-      if (fetchError || preset.user_id !== ctx.session.userId) {
+      // Verify ownership
+      const preset = await db
+        .select()
+        .from(mealPresets)
+        .where(eq(mealPresets.id, input))
+        .get();
+
+      if (!preset || preset.userId !== ctx.session.userId) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Preset not found",
         });
       }
 
-      // Delete the preset
-      const { error } = await supabase
-        .from("meal_presets")
-        .delete()
-        .eq("id", input);
-
-      if (error) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to delete preset",
-        });
-      }
+      await db
+        .delete(mealPresets)
+        .where(eq(mealPresets.id, input));
 
       return { success: true };
     }),
@@ -174,7 +179,6 @@ export const mealPresetRouter = createTRPCRouter({
   logFromPreset: protectedProcedure
     .input(z.string())
     .mutation(async ({ ctx, input }) => {
-      // Check rate limit
       try {
         await checkRateLimit(ctx.session.userId, "meal_log", RATE_LIMITS.MEAL_LOG);
       } catch (error) {
@@ -187,17 +191,18 @@ export const mealPresetRouter = createTRPCRouter({
         throw error;
       }
 
-      const supabase = await createSupabaseClientWithUser(ctx.session.userId);
-      
-      // Get the preset details
-      const { data: preset, error: presetError } = await supabase
-        .from("meal_presets")
-        .select("*")
-        .eq("id", input)
-        .eq("user_id", ctx.session.userId)
-        .single();
+      const db = await getDb();
 
-      if (presetError || !preset) {
+      // Get the preset
+      const preset = await db
+        .select()
+        .from(mealPresets)
+        .where(
+          and(eq(mealPresets.id, input), eq(mealPresets.userId, ctx.session.userId))
+        )
+        .get();
+
+      if (!preset) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Preset not found",
@@ -205,34 +210,33 @@ export const mealPresetRouter = createTRPCRouter({
       }
 
       // Insert the meal log
-      const { data: mealLog, error: mealError } = await supabase
-        .from("meal_logs")
-        .insert({
-          user_id: ctx.session.userId,
-          food_id: preset.food_id,
-          portion_size_g: preset.portion_size_g,
-          vitamin_k_consumed_mcg: preset.vitamin_k_mcg,
+      const [mealLog] = await db
+        .insert(mealLogs)
+        .values({
+          userId: ctx.session.userId,
+          foodId: preset.foodId,
+          portionSizeG: preset.portionSizeG,
+          vitaminKConsumedMcg: preset.vitaminKMcg,
         })
-        .select()
-        .single();
+        .returning();
 
-      if (mealError) {
+      if (!mealLog) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to log meal from preset",
         });
       }
 
-      // Increment usage count for the preset
-      await supabase
-        .from("meal_presets")
-        .update({ usage_count: preset.usage_count + 1 })
-        .eq("id", input);
+      // Increment usage count
+      await db
+        .update(mealPresets)
+        .set({ usageCount: preset.usageCount + 1 })
+        .where(eq(mealPresets.id, input));
 
       return {
         ...mealLog,
-        logged_at: new Date(mealLog.logged_at),
-        created_at: new Date(mealLog.created_at),
+        logged_at: new Date(mealLog.loggedAt),
+        created_at: new Date(mealLog.createdAt),
       };
     }),
 });
