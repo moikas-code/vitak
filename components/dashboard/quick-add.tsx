@@ -157,7 +157,7 @@ export function QuickAdd() {
               <div className="text-sm text-muted-foreground">
                 <div>{food.vitamin_k_mcg_per_100g} mcg per 100g</div>
                 <div className="text-xs">
-                  {sanitizeText(food.common_portion_name)} ({food.common_portion_size_g}g): {((food.vitamin_k_mcg_per_100g * food.common_portion_size_g) / 100).toFixed(1)} mcg
+                  {sanitizeText(food.common_portion_name)} ({food.common_portion_size_g}g): {((food.vitamin_k_mcg_per_100g * food.common_portion_size_g) / 100 || 0).toFixed(1)} mcg
                 </div>
               </div>
             </button>
@@ -208,7 +208,7 @@ export function QuickAdd() {
               </p>
               {watch("portion_size_g") && (
                 <p className="text-sm font-medium text-primary">
-                  Vitamin K: {((selectedFood.vitamin_k_mcg_per_100g * (watch("portion_size_g") || 0)) / 100).toFixed(1)} mcg
+                  Vitamin K: {((selectedFood.vitamin_k_mcg_per_100g * (watch("portion_size_g") || 0)) / 100 || 0).toFixed(1)} mcg
                 </p>
               )}
             </div>

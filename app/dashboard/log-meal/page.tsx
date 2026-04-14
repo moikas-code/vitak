@@ -21,9 +21,13 @@ export default function LogMealPage() {
   }, []);
 
   const todayTotal = todayMeals?.reduce(
-    (sum: number, meal: { vitamin_k_consumed_mcg: number }) => sum + meal.vitamin_k_consumed_mcg,
+    (sum: number, meal: { vitamin_k_consumed_mcg: number }) => sum + (meal.vitamin_k_consumed_mcg ?? 0),
     0
-  ) || 0;
+  ) ?? 0;
+
+  const dailyLimit = balances?.daily?.credits_limit ?? 100;
+  const remaining = dailyLimit - todayTotal;
+  const percentage = dailyLimit > 0 ? (todayTotal / dailyLimit) * 100 : 0;
 
   return (
     <div className="space-y-6">
@@ -56,13 +60,13 @@ export default function LogMealPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {(balances.daily.credits_limit - todayTotal).toFixed(0)}
+                  {remaining.toFixed(0)}
                 </p>
                 <p className="text-sm text-muted-foreground">mcg remaining</p>
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {((todayTotal / balances.daily.credits_limit) * 100).toFixed(0)}%
+                  {percentage.toFixed(0)}%
                 </p>
                 <p className="text-sm text-muted-foreground">of daily limit</p>
               </div>

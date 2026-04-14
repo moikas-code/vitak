@@ -84,7 +84,7 @@ export function SaveAsPresetButton({ food, portion_size_g, onSuccess }: SaveAsPr
           <div className="p-3 rounded-lg border bg-accent/50">
             <div className="font-medium">{sanitizeText(food.name)}</div>
             <div className="text-sm text-muted-foreground">
-              {portion_size_g}g • {vitamin_k_amount.toFixed(1)} mcg Vitamin K
+              {portion_size_g}g • {(vitamin_k_amount ?? 0).toFixed(1)} mcg Vitamin K
             </div>
           </div>
           <div className="space-y-2">

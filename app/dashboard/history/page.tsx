@@ -36,6 +36,12 @@ export default function HistoryPage() {
     return acc;
   }, {} as Record<string, MealLogWithFood[]>);
 
+  const weeklyUsed = balances?.weekly?.credits_used ?? 0;
+  const weeklyLimit = balances?.weekly?.credits_limit ?? 700;
+  const monthlyUsed = balances?.monthly?.credits_used ?? 0;
+  const monthlyLimit = balances?.monthly?.credits_limit ?? 3000;
+  const monthlyRemaining = monthlyLimit - monthlyUsed;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -105,10 +111,10 @@ export default function HistoryPage() {
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">
-                {(balances.weekly.credits_used / 7).toFixed(0)} mcg/day
+                {(weeklyUsed / 7).toFixed(0)} mcg/day
               </p>
               <p className="text-sm text-muted-foreground">
-                {((balances.weekly.credits_used / balances.weekly.credits_limit) * 100).toFixed(0)}% of weekly limit
+                {weeklyLimit > 0 ? `${((weeklyUsed / weeklyLimit) * 100).toFixed(0)}% of weekly limit` : '0% of weekly limit'}
               </p>
             </CardContent>
           </Card>
@@ -119,12 +125,12 @@ export default function HistoryPage() {
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">
-                {balances.monthly.credits_used.toFixed(0)} mcg
+                {monthlyUsed.toFixed(0)} mcg
               </p>
               <p className="text-sm text-muted-foreground">
-                {balances.monthly.credits_limit - balances.monthly.credits_used > 0 
-                  ? `${(balances.monthly.credits_limit - balances.monthly.credits_used).toFixed(0)} mcg remaining`
-                  : `${Math.abs(balances.monthly.credits_limit - balances.monthly.credits_used).toFixed(0)} mcg over`
+                {monthlyRemaining > 0 
+                  ? `${monthlyRemaining.toFixed(0)} mcg remaining`
+                  : `${Math.abs(monthlyRemaining).toFixed(0)} mcg over`
                 }
               </p>
             </CardContent>
@@ -158,7 +164,7 @@ export default function HistoryPage() {
                 .sort(([a], [b]) => b.localeCompare(a))
                 .map(([date, logs]) => {
                   const dayTotal = logs.reduce(
-                    (sum: number, log: MealLogWithFood) => sum + log.vitamin_k_consumed_mcg,
+                    (sum: number, log: MealLogWithFood) => sum + (log.vitamin_k_consumed_mcg ?? 0),
                     0
                   );
                   return (
@@ -179,13 +185,13 @@ export default function HistoryPage() {
                           >
                             <span>{log.food?.name || "Unknown Food"}</span>
                             <span>
-                              {log.portion_size_g}g
-                              {log.food?.common_portion_name && log.food?.common_portion_size_g && (
+                              {log.portion_size_g ?? 0}g
+                              {log.food?.common_portion_name && log.food?.common_portion_size_g ? (
                                 <span className="text-xs">
-                                  {" "}({(log.portion_size_g / log.food.common_portion_size_g).toFixed(1)} × {log.food.common_portion_name})
+                                  {" "}({((log.portion_size_g ?? 0) / log.food.common_portion_size_g).toFixed(1)} × {log.food.common_portion_name})
                                 </span>
-                              )}
-                              {" "}• {log.vitamin_k_consumed_mcg.toFixed(1)} mcg
+                              ) : null}
+                              {" "}• {(log.vitamin_k_consumed_mcg ?? 0).toFixed(1)} mcg
                             </span>
                           </div>
                         ))}
