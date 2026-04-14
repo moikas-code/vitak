@@ -80,6 +80,9 @@ export const mealLogRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const db = await getDb();
+      // Normalize dates to D1 storage format: "YYYY-MM-DD HH:MM:SS"
+      const start = input.start_date.replace('T', ' ').replace('Z', '').split('.')[0];
+      const end = input.end_date.replace('T', ' ').replace('Z', '').split('.')[0];
 
       const results = await db
         .select({
@@ -108,8 +111,8 @@ export const mealLogRouter = createTRPCRouter({
         .where(
           and(
             eq(mealLogs.userId, ctx.session.userId),
-            gte(mealLogs.loggedAt, input.start_date),
-            lte(mealLogs.loggedAt, input.end_date)
+            gte(mealLogs.loggedAt, start),
+            lte(mealLogs.loggedAt, end)
           )
         )
         .orderBy(desc(mealLogs.loggedAt));
@@ -142,8 +145,8 @@ export const mealLogRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const db = await getDb();
 
-      const startOfDay = `${input}T00:00:00`;
-      const endOfDay = `${input}T23:59:59`;
+      const startOfDay = `${input} 00:00:00`;
+      const endOfDay = `${input} 23:59:59`;
 
       const results = await db
         .select({
@@ -204,8 +207,13 @@ export const mealLogRouter = createTRPCRouter({
   getToday: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     const today = new Date();
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999).toISOString();
+    // D1 stores timestamps as "YYYY-MM-DD HH:MM:SS" (space separator)
+    // Must match that format for string comparison to work correctly
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    const startOfDay = `${y}-${m}-${d} 00:00:00`;
+    const endOfDay = `${y}-${m}-${d} 23:59:59`;
 
     const results = await db
       .select({
