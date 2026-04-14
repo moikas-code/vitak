@@ -7,14 +7,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { QuickAdd } from "@/components/dashboard/quick-add";
 import { RecentMeals } from "@/components/dashboard/recent-meals";
 import { api } from "@/lib/trpc/provider";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { track_dashboard_event } from "@/lib/analytics";
 
 export default function LogMealPage() {
-  const { data: todayMeals, isLoading: mealsLoading } = api.mealLog.getToday.useQuery();
-  const { data: balances } = api.credit.getAllBalances.useQuery();
+  const todayQuery = api.mealLog.getToday.useQuery();
+  const balancesQuery = api.credit.getAllBalances.useQuery();
+
+  const todayMeals = todayQuery.data;
+  const balances = balancesQuery.data;
 
   useEffect(() => {
     track_dashboard_event('log_meal');
@@ -44,6 +47,13 @@ export default function LogMealPage() {
           </p>
         </div>
       </div>
+
+      {todayQuery.error && (
+        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+          <AlertCircle className="h-4 w-4 flex-shrink-0" />
+          <span>Error loading meals: {todayQuery.error.message}</span>
+        </div>
+      )}
 
       {balances && (
         <Card className="bg-gradient-to-r from-primary/10 to-primary/5">
@@ -92,7 +102,9 @@ export default function LogMealPage() {
           <CardHeader>
             <CardTitle>Today&apos;s Meals</CardTitle>
             <CardDescription>
-              {mealsLoading ? "Loading meals..." : "Foods you've logged today"}
+              {todayQuery.isLoading ? "Loading meals..." :
+               todayMeals ? `${todayMeals.length} meal${todayMeals.length !== 1 ? 's' : ''} logged today` :
+               "Foods you've logged today"}
             </CardDescription>
           </CardHeader>
           <CardContent>

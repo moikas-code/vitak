@@ -10,7 +10,7 @@ import { QuickAdd } from "@/components/dashboard/quick-add";
 import { MealPresets } from "@/components/dashboard/meal-presets";
 import { api } from "@/lib/trpc/provider";
 import { track_dashboard_event } from "@/lib/analytics";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function DashboardPage() {
@@ -18,7 +18,9 @@ export default function DashboardPage() {
     retry: 2,
     retryDelay: 1000,
   });
-  const { data: todayMeals, isLoading: mealsLoading } = api.mealLog.getToday.useQuery();
+  const utils = api.useUtils();
+  const mealsQuery = api.mealLog.getToday.useQuery();
+  const { data: todayMeals, isLoading: mealsLoading, error: mealsError } = mealsQuery;
 
   useEffect(() => {
     track_dashboard_event('dashboard');
@@ -36,7 +38,8 @@ export default function DashboardPage() {
             size="sm"
             variant="outline"
             onClick={() => {
-              window.location.reload();
+              utils.mealLog.getToday.invalidate();
+              utils.credit.getAllBalances.invalidate();
             }}
             className="h-7 text-xs"
           >
@@ -44,6 +47,12 @@ export default function DashboardPage() {
             Refresh
           </Button>
         </div>
+        {mealsError && (
+          <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm mt-2">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span>Error loading meals: {mealsError.message}</span>
+          </div>
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
