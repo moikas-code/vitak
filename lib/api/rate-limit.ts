@@ -48,10 +48,10 @@ export async function withRateLimit(
 
 // API-specific rate limits
 export const API_RATE_LIMITS = {
-  // Auth sync: 20 per hour per user/IP
+  // Auth sync: 60 per hour per user/IP (1 per minute is reasonable)
   AUTH_SYNC: {
     windowMs: 60 * 60 * 1000,
-    maxRequests: 20,
+    maxRequests: 60,
   },
   // Stripe checkout: 10 per hour per user
   STRIPE_CHECKOUT: {
