@@ -63,13 +63,13 @@ function RecentMealsComponent({ meals }: RecentMealsProps) {
           <div>
             <div className="font-medium">{sanitizeText(meal.food?.name) || "Unknown Food"}</div>
             <div className="text-sm text-muted-foreground">
-              {meal.portion_size_g}g
-              {meal.food?.common_portion_name && meal.food?.common_portion_size_g && (
+              {meal.portion_size_g ?? 0}g
+              {meal.food?.common_portion_name && meal.food?.common_portion_size_g ? (
                 <span className="text-xs">
-                  {" "}({(meal.portion_size_g / meal.food.common_portion_size_g).toFixed(1)} × {sanitizeText(meal.food.common_portion_name)})
+                  {" "}({((meal.portion_size_g ?? 0) / meal.food.common_portion_size_g).toFixed(1)} × {sanitizeText(meal.food.common_portion_name)})
                 </span>
-              )}
-              {" "}• {meal.vitamin_k_consumed_mcg.toFixed(1)} mcg
+              ) : null}
+              {" "}• {(meal.vitamin_k_consumed_mcg ?? 0).toFixed(1)} mcg
             </div>
           </div>
           <Button

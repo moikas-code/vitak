@@ -12,9 +12,11 @@ interface CreditDisplayProps {
   period: VitaminKPeriod;
 }
 
-export function CreditDisplay({ title, current, limit, period: _period }: CreditDisplayProps) {
-  const percentage = (current / limit) * 100;
-  const remaining = limit - current;
+export function CreditDisplay({ title, current = 0, limit = 100, period: _period }: CreditDisplayProps) {
+  const safeCurrent = current ?? 0;
+  const safeLimit = limit ?? 100;
+  const percentage = (safeCurrent / safeLimit) * 100;
+  const remaining = safeLimit - safeCurrent;
   
   const getColorClass = () => {
     if (percentage >= 90) return "text-destructive";
@@ -36,10 +38,10 @@ export function CreditDisplay({ title, current, limit, period: _period }: Credit
       <CardContent className="space-y-3">
         <div className="flex items-baseline justify-between">
           <span className={cn("text-2xl font-bold", getColorClass())}>
-            {current.toFixed(0)}
+            {(safeCurrent).toFixed(0)}
           </span>
           <span className="text-sm text-muted-foreground">
-            / {limit} mcg
+            / {safeLimit} mcg
           </span>
         </div>
         
