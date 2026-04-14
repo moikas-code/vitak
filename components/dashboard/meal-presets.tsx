@@ -53,9 +53,15 @@ export function MealPresets() {
   });
 
   const log_mutation = api.mealPreset.logFromPreset.useMutation({
-    onSuccess: (_data, preset_id) => {
+    onSuccess: (newMeal, preset_id) => {
+      // Optimistically add the meal to the cache
+      if (newMeal) {
+        utils.mealLog.getToday.setData(undefined as any, (old: any) => {
+          if (!old) return [newMeal];
+          return [newMeal, ...old];
+        });
+      }
       utils.mealPreset.getAll.invalidate();
-      utils.mealLog.getToday.invalidate();
       utils.credit.getAllBalances.invalidate();
 
       const preset = presets?.find(p => p.id === preset_id);
@@ -65,7 +71,7 @@ export function MealPresets() {
           vitamin_k_amount: getVitaminKLevel(preset.vitaminKMcg),
         });
       }
-      toast({ title: "Meal logged", description: "Your meal has been added from the preset." });
+      toast({ title: "Meal logged", description: `${preset?.food?.name ?? 'Meal'} added from preset.` });
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to log meal from preset.", variant: "destructive" });

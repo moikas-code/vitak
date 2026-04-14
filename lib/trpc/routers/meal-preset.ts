@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { getDb } from "@/lib/db";
+import { mapMealLog, mapFood } from "@/lib/db/mappers";
 import { mealPresets, foods, mealLogs } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
@@ -233,10 +234,15 @@ export const mealPresetRouter = createTRPCRouter({
         .set({ usageCount: preset.usageCount + 1 })
         .where(eq(mealPresets.id, input));
 
+      const food = await db
+        .select()
+        .from(foods)
+        .where(eq(foods.id, preset.foodId))
+        .get();
+
       return {
-        ...mealLog,
-        logged_at: new Date(mealLog.loggedAt),
-        created_at: new Date(mealLog.createdAt),
+        ...mapMealLog(mealLog),
+        food: food ? mapFood(food) : null,
       };
     }),
 });
