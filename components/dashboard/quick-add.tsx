@@ -41,7 +41,7 @@ export function QuickAdd() {
   const createMeal = api.mealLog.add.useMutation({
     onSuccess: (newMeal) => {
       // Optimistically update the cache — don't wait for refetch
-      utils.mealLog.getToday.setData(undefined as any, (old: any) => {
+      utils.mealLog.getToday.setData({} as any, (old: any) => {
         if (!old) return [newMeal];
         return [newMeal, ...old];
       });

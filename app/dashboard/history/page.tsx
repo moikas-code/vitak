@@ -24,7 +24,10 @@ export default function HistoryPage() {
     track_dashboard_event('history');
   }, []);
 
-  const { data: mealLogs } = api.mealLog.getByDateRange.useQuery(dateRange);
+  const { data: mealLogs } = api.mealLog.getByDateRange.useQuery({
+    ...dateRange,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  });
   const { data: balances } = api.credit.getAllBalances.useQuery();
 
   const groupedByDate = mealLogs?.reduce((acc: Record<string, MealLogWithFood[]>, log: MealLogWithFood) => {

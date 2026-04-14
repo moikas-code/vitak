@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { track_dashboard_event } from "@/lib/analytics";
 
 function LogMealContent() {
-  const todayQuery = api.mealLog.getToday.useQuery();
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const todayQuery = api.mealLog.getToday.useQuery({ timezone });
   const balancesQuery = api.credit.getAllBalances.useQuery();
 
   const todayMeals = todayQuery.data;

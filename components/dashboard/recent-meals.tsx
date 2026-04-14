@@ -18,7 +18,7 @@ function RecentMealsComponent({ meals }: RecentMealsProps) {
   const deleteMeal = api.mealLog.delete.useMutation({
     onSuccess: (_data, mealId) => {
       // Optimistically remove from cache
-      utils.mealLog.getToday.setData(undefined, (old) => {
+      utils.mealLog.getToday.setData({}, (old) => {
         if (!old) return [];
         return old.filter((m) => m.id !== mealId);
       });

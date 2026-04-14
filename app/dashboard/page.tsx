@@ -17,7 +17,7 @@ function DashboardContent() {
     retryDelay: 1000,
   });
   const utils = api.useUtils();
-  const mealsQuery = api.mealLog.getToday.useQuery();
+  const mealsQuery = api.mealLog.getToday.useQuery({ timezone: Intl.DateTimeFormat().resolvedOptions().timeZone });
   const { data: todayMeals, isLoading: mealsLoading, error: mealsError } = mealsQuery;
 
   useEffect(() => {

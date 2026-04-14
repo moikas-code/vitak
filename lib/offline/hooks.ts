@@ -35,7 +35,7 @@ export function useOfflineMealLogs() {
   const storage = OfflineStorageService.getInstance();
 
   // Try to get from server first, fallback to local
-  const server_query = api.mealLog.getToday.useQuery(undefined, {
+  const server_query = api.mealLog.getToday.useQuery({}, {
     enabled: !!user,
     retry: false,
     staleTime: 0, // Always fetch fresh data when online

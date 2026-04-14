@@ -56,7 +56,7 @@ export function MealPresets() {
     onSuccess: (newMeal, preset_id) => {
       // Optimistically add the meal to the cache
       if (newMeal) {
-        utils.mealLog.getToday.setData(undefined as any, (old: any) => {
+        utils.mealLog.getToday.setData({} as any, (old: any) => {
           if (!old) return [newMeal];
           return [newMeal, ...old];
         });

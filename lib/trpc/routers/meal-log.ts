@@ -7,6 +7,56 @@ import { TRPCError } from "@trpc/server";
 import { checkRateLimit, RateLimitError, RATE_LIMITS } from "@/lib/security/rate-limit";
 import { mapFood, mapMealLog } from "@/lib/db/mappers";
 
+/**
+ * Get UTC date range for "today" in the given timezone.
+ * D1 stores timestamps as UTC "YYYY-MM-DD HH:MM:SS" (space separator).
+ *
+ * For America/New_York (EDT, UTC-4):
+ *   Local midnight Apr 14 = UTC Apr 14 04:00:00
+ *   Local end-of-day Apr 14 = UTC Apr 15 03:59:59
+ * For UTC: identity mapping
+ * For Asia/Tokyo (JST, UTC+9):
+ *   Local midnight Apr 14 = UTC Apr 13 15:00:00
+ */
+function getTodayRangeInUtc(timezone: string): { startUtc: string; endUtc: string } {
+  const now = new Date();
+  const localParts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(now);
+  const y = parseInt(localParts.find(p => p.type === 'year')!.value);
+  const m = parseInt(localParts.find(p => p.type === 'month')!.value) - 1;
+  const d = parseInt(localParts.find(p => p.type === 'day')!.value);
+
+  // Create UTC-based Date objects for local midnight / end-of-day
+  const localMidnight = new Date(Date.UTC(y, m, d, 0, 0, 0));
+  const localEnd = new Date(Date.UTC(y, m, d, 23, 59, 59));
+
+  // Get timezone offset at these moments
+  const startOffset = getTimezoneOffsetMs(timezone, localMidnight);
+  const endOffset = getTimezoneOffsetMs(timezone, localEnd);
+
+  // actual_utc = local_time + offset
+  // For EDT: midnight + 4h = 4am UTC ✓
+  // For JST: midnight - 9h = 3pm UTC prev day ✓
+  const startUtcDate = new Date(localMidnight.getTime() + startOffset);
+  const endUtcDate = new Date(localEnd.getTime() + endOffset + 999);
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const fmt = (dt: Date) =>
+    `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth() + 1)}-${pad(dt.getUTCDate())} ${pad(dt.getUTCHours())}:${pad(dt.getUTCMinutes())}:${pad(dt.getUTCSeconds())}`;
+
+  return { startUtc: fmt(startUtcDate), endUtc: fmt(endUtcDate) };
+}
+
+/**
+ * Timezone offset in ms. Positive = behind UTC (EDT = +4h). Negative = ahead (JST = -9h).
+ */
+function getTimezoneOffsetMs(timezone: string, date: Date): number {
+  const utcStr = date.toLocaleString('en-US', { timeZone: 'UTC' });
+  const tzStr = date.toLocaleString('en-US', { timeZone: timezone });
+  return new Date(utcStr).getTime() - new Date(tzStr).getTime();
+}
+
 export const mealLogRouter = createTRPCRouter({
   add: protectedProcedure
     .input(
@@ -76,6 +126,7 @@ export const mealLogRouter = createTRPCRouter({
       z.object({
         start_date: z.string(),
         end_date: z.string(),
+        timezone: z.string().optional(),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -204,16 +255,11 @@ export const mealLogRouter = createTRPCRouter({
       }));
     }),
 
-  getToday: protectedProcedure.query(async ({ ctx }) => {
+  getToday: protectedProcedure
+    .input(z.object({ timezone: z.string().optional() }))
+    .query(async ({ ctx, input }) => {
     const db = await getDb();
-    const today = new Date();
-    // D1 stores timestamps as "YYYY-MM-DD HH:MM:SS" (space separator)
-    // Must match that format for string comparison to work correctly
-    const y = today.getFullYear();
-    const m = String(today.getMonth() + 1).padStart(2, '0');
-    const d = String(today.getDate()).padStart(2, '0');
-    const startOfDay = `${y}-${m}-${d} 00:00:00`;
-    const endOfDay = `${y}-${m}-${d} 23:59:59`;
+    const { startUtc, endUtc } = getTodayRangeInUtc(input.timezone || 'UTC');
 
     const results = await db
       .select({
@@ -242,8 +288,8 @@ export const mealLogRouter = createTRPCRouter({
       .where(
         and(
           eq(mealLogs.userId, ctx.session.userId),
-          gte(mealLogs.loggedAt, startOfDay),
-          lte(mealLogs.loggedAt, endOfDay)
+          gte(mealLogs.loggedAt, startUtc),
+          lte(mealLogs.loggedAt, endUtc)
         )
       )
       .orderBy(desc(mealLogs.loggedAt));
