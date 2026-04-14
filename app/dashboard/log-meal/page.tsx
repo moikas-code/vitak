@@ -1,18 +1,16 @@
 "use client";
 
-export const dynamic = 'force-dynamic';
-
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { QuickAdd } from "@/components/dashboard/quick-add";
 import { RecentMeals } from "@/components/dashboard/recent-meals";
 import { api } from "@/lib/trpc/provider";
-import { ArrowLeft, AlertCircle } from "lucide-react";
+import { ArrowLeft, AlertCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { track_dashboard_event } from "@/lib/analytics";
 
-export default function LogMealPage() {
+function LogMealContent() {
   const todayQuery = api.mealLog.getToday.useQuery();
   const balancesQuery = api.credit.getAllBalances.useQuery();
 
@@ -34,20 +32,6 @@ export default function LogMealPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Log Meal</h1>
-          <p className="text-gray-600 mt-1">
-            Add foods to track your Vitamin K intake
-          </p>
-        </div>
-      </div>
-
       {todayQuery.error && (
         <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
           <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -104,7 +88,7 @@ export default function LogMealPage() {
             <CardDescription>
               {todayQuery.isLoading ? "Loading meals..." :
                todayMeals ? `${todayMeals.length} meal${todayMeals.length !== 1 ? 's' : ''} logged today` :
-               "Foods you've logged today"}
+               "Foods you&apos;ve logged today"}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -112,6 +96,34 @@ export default function LogMealPage() {
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+}
+
+export default function LogMealPage() {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Link href="/dashboard">
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Log Meal</h1>
+          <p className="text-gray-600 mt-1">
+            Add foods to track your Vitamin K intake
+          </p>
+        </div>
+      </div>
+
+      <Suspense fallback={
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        </div>
+      }>
+        <LogMealContent />
+      </Suspense>
     </div>
   );
 }

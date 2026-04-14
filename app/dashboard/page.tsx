@@ -1,8 +1,6 @@
 "use client";
 
-export const dynamic = 'force-dynamic';
-
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreditDisplay } from "@/components/dashboard/credit-display";
 import { RecentMeals } from "@/components/dashboard/recent-meals";
@@ -13,7 +11,7 @@ import { track_dashboard_event } from "@/lib/analytics";
 import { Loader2, RefreshCw, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export default function DashboardPage() {
+function DashboardContent() {
   const { data: balances, error: balancesError } = api.credit.getAllBalances.useQuery(undefined, {
     retry: 2,
     retryDelay: 1000,
@@ -26,34 +24,33 @@ export default function DashboardPage() {
     track_dashboard_event('dashboard');
   }, []);
 
+  const todayTotal = todayMeals?.reduce(
+    (sum: number, meal: { vitamin_k_consumed_mcg: number }) => sum + (meal.vitamin_k_consumed_mcg ?? 0),
+    0
+  ) ?? 0;
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-1">
-          Track your Vitamin K intake and stay within your limits
-        </p>
-        <div className="flex items-center gap-2 mt-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              utils.mealLog.getToday.invalidate();
-              utils.credit.getAllBalances.invalidate();
-            }}
-            className="h-7 text-xs"
-          >
-            <RefreshCw className="h-3 w-3 mr-1" />
-            Refresh
-          </Button>
-        </div>
-        {mealsError && (
-          <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm mt-2">
-            <AlertCircle className="h-4 w-4 flex-shrink-0" />
-            <span>Error loading meals: {mealsError.message}</span>
-          </div>
-        )}
+    <>
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            utils.mealLog.getToday.invalidate();
+            utils.credit.getAllBalances.invalidate();
+          }}
+          className="h-7 text-xs"
+        >
+          <RefreshCw className="h-3 w-3 mr-1" />
+          Refresh
+        </Button>
       </div>
+      {mealsError && (
+        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm mt-2">
+          <AlertCircle className="h-4 w-4 flex-shrink-0" />
+          <span>Error loading meals: {mealsError.message}</span>
+        </div>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {balancesError ? (
@@ -120,20 +117,37 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle>Today&apos;s Meals</CardTitle>
             <CardDescription>
-              Your logged meals for today
+              {mealsLoading ? "Loading meals..." :
+               todayMeals ? `${todayMeals.length} meal${todayMeals.length !== 1 ? 's' : ''} logged today (${todayTotal.toFixed(0)} mcg)` :
+               "Your logged meals for today"}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {mealsLoading && !todayMeals ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-              </div>
-            ) : (
-              <RecentMeals meals={todayMeals || []} />
-            )}
+            <RecentMeals meals={todayMeals || []} />
           </CardContent>
         </Card>
       </div>
+    </>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+        <p className="text-gray-600 mt-1">
+          Track your Vitamin K intake and stay within your limits
+        </p>
+      </div>
+
+      <Suspense fallback={
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        </div>
+      }>
+        <DashboardContent />
+      </Suspense>
     </div>
   );
 }
