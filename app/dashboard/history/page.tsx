@@ -10,6 +10,8 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { track_dashboard_event } from "@/lib/analytics";
+import { IntakeHistoryChart } from "@/components/dashboard/intake-history-chart";
+import { CategoryPieChart } from "@/components/dashboard/category-pie-chart";
 import type { MealLogWithFood } from "@/lib/types";
 
 export default function HistoryPage() {
@@ -170,6 +172,16 @@ export default function HistoryPage() {
               </p>
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {groupedByDate && Object.keys(groupedByDate).length > 0 && (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <IntakeHistoryChart
+            groupedByDate={groupedByDate}
+            dailyLimit={balances?.daily?.credits_limit ?? 100}
+          />
+          <CategoryPieChart meals={mealLogs ?? []} />
         </div>
       )}
 

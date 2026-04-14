@@ -6,6 +6,8 @@ import { CreditDisplay } from "@/components/dashboard/credit-display";
 import { RecentMeals } from "@/components/dashboard/recent-meals";
 import { QuickAdd } from "@/components/dashboard/quick-add";
 import { MealPresets } from "@/components/dashboard/meal-presets";
+import { VitaminKDailyChart } from "@/components/dashboard/vitamin-k-daily-chart";
+import { CategoryPieChart } from "@/components/dashboard/category-pie-chart";
 import { api } from "@/lib/trpc/provider";
 import { track_dashboard_event } from "@/lib/analytics";
 import { Loader2, RefreshCw, AlertCircle } from "lucide-react";
@@ -99,6 +101,14 @@ function DashboardContent() {
           <MealPresets />
         </CardContent>
       </Card>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <VitaminKDailyChart
+          meals={todayMeals || []}
+          dailyLimit={balances?.daily?.credits_limit ?? 100}
+        />
+        <CategoryPieChart meals={todayMeals || []} />
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
