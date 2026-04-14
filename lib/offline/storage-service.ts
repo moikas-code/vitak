@@ -103,10 +103,16 @@ export class OfflineStorageService {
       })
       .map(log => {
         if (log.encrypted_data) {
-          return decrypt_data<MealLog>(log.encrypted_data, encryption_key);
+          try {
+            return decrypt_data<MealLog>(log.encrypted_data, encryption_key);
+          } catch {
+            logger.warn('Failed to decrypt meal log, skipping', { logId: log.id });
+            return null;
+          }
         }
         return log as MealLog;
       })
+      .filter((log): log is MealLog => log !== null)
       .sort((a, b) => new Date(b.logged_at).getTime() - new Date(a.logged_at).getTime());
   }
   
@@ -193,7 +199,12 @@ export class OfflineStorageService {
     if (!settings) return null;
     
     if (settings.encrypted_data) {
-      return decrypt_data<UserSettings>(settings.encrypted_data, encryption_key);
+      try {
+        return decrypt_data<UserSettings>(settings.encrypted_data, encryption_key);
+      } catch {
+        logger.warn('Failed to decrypt user settings, using server data');
+        return null;
+      }
     }
     
     return settings as UserSettings;
@@ -238,10 +249,15 @@ export class OfflineStorageService {
     
     return presets.map(preset => {
       if (preset.encrypted_data) {
-        return decrypt_data<MealPreset>(preset.encrypted_data, encryption_key);
+        try {
+          return decrypt_data<MealPreset>(preset.encrypted_data, encryption_key);
+        } catch {
+          logger.warn('Failed to decrypt meal preset, skipping', { presetId: preset.id });
+          return null;
+        }
       }
       return preset as MealPreset;
-    });
+    }).filter((p): p is MealPreset => p !== null);
   }
   
   async deleteMealPreset(id: string): Promise<void> {

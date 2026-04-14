@@ -183,8 +183,8 @@ export class SyncManager {
         
         const request_body = {
           json: {
-            food_id: meal_log.food_id,
-            portion_size_g: meal_log.portion_size_g,
+            food_id: (meal_log as Record<string, unknown>).foodId as string || meal_log.food_id,
+            portion_size_g: (meal_log as Record<string, unknown>).portionSizeG as number || meal_log.portion_size_g,
           }
         };
         
@@ -322,9 +322,8 @@ export class SyncManager {
         logger.info(' Creating meal preset:', { mealPreset: meal_preset });
         logger.info(' Preset details:', {
           name: meal_preset.name,
-          food_id: meal_preset.food_id,
-          portion_size_g: meal_preset.portion_size_g,
-          type_of_portion: typeof meal_preset.portion_size_g
+          food_id: (meal_preset as Record<string, unknown>).foodId as string || meal_preset.food_id,
+          portion_size_g: (meal_preset as Record<string, unknown>).portionSizeG as number || meal_preset.portion_size_g,
         });
         const response = await fetch('/api/trpc/mealPreset.create', {
           method: 'POST',
@@ -336,8 +335,8 @@ export class SyncManager {
           body: JSON.stringify({
             json: {
               name: meal_preset.name,
-              food_id: meal_preset.food_id,
-              portion_size_g: meal_preset.portion_size_g,
+              food_id: (meal_preset as Record<string, unknown>).foodId as string || meal_preset.food_id,
+              portion_size_g: (meal_preset as Record<string, unknown>).portionSizeG as number || meal_preset.portion_size_g,
             }
           }),
         });

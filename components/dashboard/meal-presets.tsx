@@ -21,6 +21,16 @@ import { track_meal_event } from "@/lib/analytics";
 import { getVitaminKColor, getVitaminKLevel } from "@/lib/config/constants";
 import { useConnectionStatus } from "@/lib/offline/hooks";
 
+type PresetItem = {
+  id: string;
+  name: string;
+  portionSizeG: number;
+  vitaminKMcg: number;
+  usageCount: number;
+  food?: { name?: string | null; category?: string | null } | null;
+  [key: string]: unknown;
+};
+
 export function MealPresets() {
   const { toast } = useToast();
   const [delete_preset_id, setDeletePresetId] = useState<string | null>(null);
@@ -49,7 +59,7 @@ export function MealPresets() {
       utils.mealLog.getToday.invalidate();
       utils.credit.getAllBalances.invalidate();
 
-      const preset = presets?.find((p) => p.id === preset_id);
+      const preset = presets?.find(p => p.id === preset_id);
       if (preset) {
         track_meal_event('saved', {
           food_category: preset.food?.category,
@@ -91,51 +101,58 @@ export function MealPresets() {
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {presets.map((preset) => (
-          <Card key={preset.id} className="p-4">
-            <div className="flex items-start justify-between">
-              <div className="flex-1 min-w-0">
-                <h4 className="font-medium truncate">{sanitizeText(preset.name)}</h4>
-                <p className="text-sm text-muted-foreground truncate">
-                  {sanitizeText(preset.food?.name) || "Unknown Food"}
-                </p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-sm">{preset.portionSizeG}g</span>
-                  <span className="text-sm">•</span>
-                  <span className={`text-sm font-medium ${getVitaminKColor(preset.vitaminKMcg)}`}>
-                    {preset.vitaminKMcg.toFixed(1)} mcg
-                  </span>
-                </div>
-                {preset.usageCount > 0 && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Used {preset.usageCount} time{preset.usageCount !== 1 ? 's' : ''}
+        {presets.map((preset) => {
+          const p = preset as PresetItem;
+          const vitaminK = p.vitaminKMcg ?? (p.vitamin_k_mcg as number) ?? 0;
+          const portionG = p.portionSizeG ?? (p.portion_size_g as number) ?? 0;
+          const usage = p.usageCount ?? (p.usage_count as number) ?? 0;
+
+          return (
+            <Card key={preset.id} className="p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-medium truncate">{sanitizeText(preset.name)}</h4>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {sanitizeText(preset.food?.name) || "Unknown Food"}
                   </p>
-                )}
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-sm">{portionG}g</span>
+                    <span className="text-sm">•</span>
+                    <span className={`text-sm font-medium ${getVitaminKColor(vitaminK)}`}>
+                      {vitaminK.toFixed(1)} mcg
+                    </span>
+                  </div>
+                  {usage > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Used {usage} time{usage !== 1 ? 's' : ''}
+                    </p>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setDeletePresetId(preset.id)}
+                  className="ml-2 flex-shrink-0"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
               <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setDeletePresetId(preset.id)}
-                className="ml-2 flex-shrink-0"
+                size="sm"
+                className="w-full mt-3"
+                onClick={() => log_mutation.mutate(preset.id)}
+                disabled={log_mutation.isPending && log_mutation.variables === preset.id}
               >
-                <Trash2 className="h-4 w-4" />
+                {log_mutation.isPending && log_mutation.variables === preset.id ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="mr-2 h-4 w-4" />
+                )}
+                Quick Add
               </Button>
-            </div>
-            <Button
-              size="sm"
-              className="w-full mt-3"
-              onClick={() => log_mutation.mutate(preset.id)}
-              disabled={log_mutation.isPending && log_mutation.variables === preset.id}
-            >
-              {log_mutation.isPending && log_mutation.variables === preset.id ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Plus className="mr-2 h-4 w-4" />
-              )}
-              Quick Add
-            </Button>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
 
       <AlertDialog open={!!delete_preset_id} onOpenChange={() => setDeletePresetId(null)}>
