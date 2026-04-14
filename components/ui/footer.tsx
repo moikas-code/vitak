@@ -53,6 +53,11 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/api-docs" className="text-gray-600 hover:text-gray-900 transition-colors">
+                  API Documentation
+                </Link>
+              </li>
+              <li>
                 <Link href="/install" className="text-gray-600 hover:text-gray-900 transition-colors">
                   Install App
                 </Link>

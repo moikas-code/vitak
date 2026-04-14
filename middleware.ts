@@ -34,6 +34,7 @@ const isPublicRoute = createRouteMatcher([
   "/install",
   "/faq",
   "/blog(.*)",
+  "/api-docs",
 ]);
 
 function addSecurityHeaders(response: NextResponse) {
@@ -77,6 +78,29 @@ function addSecurityHeaders(response: NextResponse) {
 }
 
 export default clerkMiddleware(async (auth, req) => {
+  // Handle CORS for x402 API endpoints
+  if (req.nextUrl.pathname.startsWith("/api/x402/")) {
+    if (req.method === "OPTIONS") {
+      return new NextResponse(null, {
+        status: 204,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization, X-402-Version, X-402-Payment, X-402-Recipient",
+          "Access-Control-Max-Age": "86400",
+        },
+      });
+    }
+  }
+
+  // Handle CORS for .well-known endpoints (AI discovery)
+  if (req.nextUrl.pathname.startsWith("/.well-known/")) {
+    const response = NextResponse.next();
+    response.headers.set("Access-Control-Allow-Origin", "*");
+    response.headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+    response.headers.set("Access-Control-Allow-Headers", "Content-Type");
+    return response;
+  }
   // Force HTTPS in production
   if (process.env.NODE_ENV === "production" && req.headers.get("x-forwarded-proto") === "http") {
     const httpsUrl = new URL(req.url);

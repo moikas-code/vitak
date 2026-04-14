@@ -1,0 +1,90 @@
+# VitaK Tracker
+
+> Vitamin K tracking for warfarin patients. Free, open-source PWA.
+
+## What is VitaK Tracker?
+
+VitaK Tracker is a Progressive Web App that helps warfarin (Coumadin) patients manage their vitamin K intake through a credit-based system. Users track daily, weekly, and monthly vitamin K consumption against personalized limits to maintain stable INR levels.
+
+## Key Features
+
+- **Credit System**: Each food contributes vitamin K "credits" toward daily/weekly/monthly limits
+- **89 Foods Database**: 38 USDA FoodData Central verified, 51 estimates
+- **Per-100g Values**: All values standardized to mcg per 100g
+- **Visual Charts**: Daily intake history, category breakdowns, progress indicators
+- **Meal Presets**: Save frequent meals for quick logging
+- **PWA**: Works offline, installable on mobile/desktop
+- **Free**: No subscription, no ads, no paywall on core features
+
+## Data Sources
+
+Vitamin K values are sourced from USDA FoodData Central SR Legacy data (nutrient ID 1185, phylloquinone). Prepared food entries are market estimates, not USDA-sourced. Each food in the database includes a `data_source` field (`usda_fdc_sr_legacy` or `estimate`).
+
+## Public APIs (x402 Paid)
+
+VitaK offers paid APIs via HTTP 402 protocol (x402) for programmatic access to vitamin K data:
+
+### Discovery Endpoints
+
+- `GET /.well-known/ai-plugin.json` — ChatGPT plugin manifest
+- `GET /.well-known/openapi.json` — OpenAPI 3.1 specification
+- `GET /.well-known/x402` — x402 payment discovery (wallet, pricing, endpoints)
+- `GET /api-docs` — Human-readable API documentation
+
+### 1. Food Search API
+```
+GET /api/x402/food/search?query=spinach&category=vegetables&limit=20
+Cost: $0.001 per request
+```
+
+### 2. Food Detail API
+```
+GET /api/x402/food/{id}
+Cost: $0.001 per request
+```
+
+### 3. Vitamin K Calculator API
+```
+POST /api/x402/calculate
+Body: { "food_id": "abc123", "portion_size_g": 180 }
+Cost: $0.002 per request
+```
+
+### 4. Batch Food Data API
+```
+GET /api/x402/food/export?format=json&category=vegetables
+Cost: $0.05 per request
+```
+
+Payment is handled via x402 protocol (HTTP 402) using USDC on Base network.
+Wallet: `0xc406fFf2Ce8b5dce517d03cd3531960eb2F6110d`
+
+## Architecture
+
+- **Frontend**: Next.js 15, React 19, Tailwind CSS, Shadcn UI
+- **Backend**: tRPC for type-safe APIs, Clerk for auth
+- **Database**: Cloudflare D1 (SQLite)
+- **Hosting**: Cloudflare Workers
+- **Domain**: vitaktracker.com
+
+## Data Accuracy
+
+All vitamin K values are per 100g (mcg). Critical data corrections were made on 2026-04-14 after verifying against USDA FoodData Central API:
+
+| Food | Previous (wrong) | Corrected (USDA) | Issue |
+|------|-----------------|-------------------|-------|
+| Spinach (raw) | 145 | 483 | Was per-cup, not per-100g |
+| Kale (raw) | 113 | 390 | Severely understated |
+| Kale (cooked) | 817 | 418 | 2x overstated |
+| Swiss chard (cooked) | 830 | 327 | Was raw value, not cooked |
+| Collard greens (cooked) | 770 | 407 | Was per-cup value |
+
+## Contact
+
+- Website: https://vitaktracker.com
+- GitHub: (open source)
+- X/Twitter: @vitaktracker
+
+## Safety Notice
+
+This tool is for informational purposes only. Warfarin dosing is medically sensitive — always consult your healthcare provider before making dietary changes. Vitamin K values are based on USDA data but individual food items may vary. The app rounds UP vitamin K calculations (ceil) to be conservative for patient safety.

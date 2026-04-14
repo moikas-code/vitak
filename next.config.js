@@ -52,6 +52,20 @@ const nextConfig = {
       },
     ];
   },
+
+  // Map .well-known JSON endpoints (Next.js can't have dots in dir names)
+  async rewrites() {
+    return [
+      {
+        source: '/.well-known/ai-plugin.json',
+        destination: '/.well-known/ai-plugin',
+      },
+      {
+        source: '/.well-known/openapi.json',
+        destination: '/.well-known/openapi',
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;
