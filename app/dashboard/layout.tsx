@@ -30,7 +30,6 @@ export default function DashboardLayout({
                   <Home className="h-4 w-4" />
                   Dashboard
                 </Link>
-
                 <Link
                   href="/dashboard/log-meal"
                   className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-gray-900 px-2 py-1 rounded-md hover:bg-gray-50"
@@ -45,7 +44,6 @@ export default function DashboardLayout({
                   <Activity className="h-4 w-4" />
                   History
                 </Link>
-
                 <Link
                   href="/dashboard/settings"
                   className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-gray-900 px-2 py-1 rounded-md hover:bg-gray-50"
@@ -53,10 +51,7 @@ export default function DashboardLayout({
                   <Settings className="h-4 w-4" />
                   Settings
                 </Link>
-
               </nav>
-
-              {/* Medium screens: Show core items only */}
               <nav className="hidden md:flex lg:hidden md:ml-6 space-x-3">
                 <Link
                   href="/dashboard"
@@ -65,7 +60,6 @@ export default function DashboardLayout({
                   <Home className="h-4 w-4" />
                   <span className="hidden xl:block">Dashboard</span>
                 </Link>
-
                 <Link
                   href="/dashboard/log-meal"
                   className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900 px-2 py-1 rounded-md hover:bg-gray-50"
@@ -80,7 +74,6 @@ export default function DashboardLayout({
                   <Activity className="h-4 w-4" />
                   <span className="hidden xl:block">History</span>
                 </Link>
-
                 <Link
                   href="/dashboard/settings"
                   className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900 px-2 py-1 rounded-md hover:bg-gray-50"
@@ -88,8 +81,6 @@ export default function DashboardLayout({
                   <Settings className="h-4 w-4" />
                   <span className="hidden xl:block">Settings</span>
                 </Link>
-
-
               </nav>
             </div>
             <div className="flex items-center gap-3">
