@@ -30,7 +30,7 @@ export const userSettings = sqliteTable("user_settings", {
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
 
-// ─── Food Categories (text check constraint, not enum) ─────────
+// ─── Food Categories ─────────────────────────────────────────────
 export const FOOD_CATEGORIES = [
   "vegetables",
   "fruits",
@@ -59,8 +59,32 @@ export const foods = sqliteTable("foods", {
   dataSource: text("data_source").default("usda_fdc_sr_legacy"),
   fdcId: integer("fdc_id"),
   verifiedAt: text("verified_at"),
+  // USDA sync tracking
+  usdaDescription: text("usda_description"),
+  usdaCategory: text("usda_category"),
+  usdaDerivationCode: text("usda_derivation_code"),
+  lastUsdaSync: text("last_usda_sync"),
+  usdaDataHash: text("usda_data_hash"),
+  // Full nutrient profile (JSON) for recipe calculations
+  nutrientJson: text("nutrient_json"),
+  portionsJson: text("portions_json"),
+  // Denormalized macros for fast filtering
+  caloriesPer100g: real("calories_per_100g"),
+  proteinPer100g: real("protein_per_100g"),
+  carbsPer100g: real("carbs_per_100g"),
+  fatPer100g: real("fat_per_100g"),
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+});
+
+// ─── Nutrients Reference ────────────────────────────────────────
+export const nutrients = sqliteTable("nutrients", {
+  id: integer("id").primaryKey(),
+  number: text("number").notNull().unique(),
+  name: text("name").notNull(),
+  unitName: text("unit_name").notNull(),
+  isKeyNutrient: integer("is_key_nutrient").notNull().default(0),
+  displayOrder: integer("display_order").notNull().default(0),
 });
 
 // ─── Meal Logs ──────────────────────────────────────────────────
@@ -93,6 +117,79 @@ export const mealPresets = sqliteTable("meal_presets", {
   index("idx_meal_presets_user_id").on(table.userId),
 ]);
 
+// ─── Recipes ────────────────────────────────────────────────────
+export const recipes = sqliteTable("recipes", {
+  id: text("id").primaryKey().default(sql`(lower(hex(randomblob(16))))`),
+  userId: text("user_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  instructions: text("instructions"),
+  servings: integer("servings").notNull().default(1),
+  totalVitaminKMcg: real("total_vitamin_k_mcg").notNull().default(0),
+  totalCalories: real("total_calories").notNull().default(0),
+  totalProteinG: real("total_protein_g").notNull().default(0),
+  totalCarbsG: real("total_carbs_g").notNull().default(0),
+  totalFatG: real("total_fat_g").notNull().default(0),
+  isPublic: integer("is_public").notNull().default(0),
+  slug: text("slug"),
+  imageUrl: text("image_url"),
+  prepTimeMinutes: integer("prep_time_minutes"),
+  cookTimeMinutes: integer("cook_time_minutes"),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index("idx_recipes_user_id").on(table.userId),
+  index("idx_recipes_slug").on(table.slug),
+  index("idx_recipes_public").on(table.isPublic),
+  index("idx_recipes_created").on(table.createdAt),
+]);
+
+// ─── Recipe Ingredients ────────────────────────────────────────
+export const recipeIngredients = sqliteTable("recipe_ingredients", {
+  id: text("id").primaryKey().default(sql`(lower(hex(randomblob(16))))`),
+  recipeId: text("recipe_id").notNull().references(() => recipes.id, { onDelete: "cascade" }),
+  foodId: text("food_id").notNull().references(() => foods.id, { onDelete: "cascade" }),
+  quantity: real("quantity").notNull(),
+  unit: text("unit").notNull().default("g"),
+  vitaminKMcg: real("vitamin_k_mcg").notNull().default(0),
+  calories: real("calories").notNull().default(0),
+  proteinG: real("protein_g").notNull().default(0),
+  carbsG: real("carbs_g").notNull().default(0),
+  fatG: real("fat_g").notNull().default(0),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index("idx_recipe_ingredients_recipe").on(table.recipeId),
+  index("idx_recipe_ingredients_food").on(table.foodId),
+]);
+
+// ─── Recipe Shares ──────────────────────────────────────────────
+export const recipeShares = sqliteTable("recipe_shares", {
+  id: text("id").primaryKey().default(sql`(lower(hex(randomblob(16))))`),
+  recipeId: text("recipe_id").notNull().references(() => recipes.id, { onDelete: "cascade" }),
+  sharedBy: text("shared_by").notNull(),
+  sharedWith: text("shared_with"),
+  shareType: text("share_type").notNull().default("public"),
+  shareCode: text("share_code").unique(),
+  views: integer("views").notNull().default(0),
+  saves: integer("saves").notNull().default(0),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index("idx_recipe_shares_recipe").on(table.recipeId),
+  index("idx_recipe_shares_code").on(table.shareCode),
+  index("idx_recipe_shares_type").on(table.shareType),
+]);
+
+// ─── Saved Recipes ──────────────────────────────────────────────
+export const savedRecipes = sqliteTable("saved_recipes", {
+  id: text("id").primaryKey().default(sql`(lower(hex(randomblob(16))))`),
+  userId: text("user_id").notNull(),
+  recipeId: text("recipe_id").notNull().references(() => recipes.id, { onDelete: "cascade" }),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index("idx_saved_recipes_user").on(table.userId),
+]);
+
 // ─── Food Audit Log ─────────────────────────────────────────────
 export const foodAuditLog = sqliteTable("food_audit_log", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -100,8 +197,8 @@ export const foodAuditLog = sqliteTable("food_audit_log", {
   action: text("action", { enum: ["create", "update", "delete"] }).notNull(),
   changedBy: text("changed_by").notNull(),
   changedAt: text("changed_at").notNull().default(sql`(datetime('now'))`),
-  oldValues: text("old_values"), // JSON stored as text
-  newValues: text("new_values"), // JSON stored as text
+  oldValues: text("old_values"),
+  newValues: text("new_values"),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
 }, (table) => [
@@ -116,8 +213,17 @@ export type UserSettings = typeof userSettings.$inferSelect;
 export type NewUserSettings = typeof userSettings.$inferInsert;
 export type Food = typeof foods.$inferSelect;
 export type NewFood = typeof foods.$inferInsert;
+export type Nutrient = typeof nutrients.$inferSelect;
 export type MealLog = typeof mealLogs.$inferSelect;
 export type NewMealLog = typeof mealLogs.$inferInsert;
 export type MealPreset = typeof mealPresets.$inferSelect;
 export type NewMealPreset = typeof mealPresets.$inferInsert;
+export type Recipe = typeof recipes.$inferSelect;
+export type NewRecipe = typeof recipes.$inferInsert;
+export type RecipeIngredient = typeof recipeIngredients.$inferSelect;
+export type NewRecipeIngredient = typeof recipeIngredients.$inferInsert;
+export type RecipeShare = typeof recipeShares.$inferSelect;
+export type NewRecipeShare = typeof recipeShares.$inferInsert;
+export type SavedRecipe = typeof savedRecipes.$inferSelect;
+export type NewSavedRecipe = typeof savedRecipes.$inferInsert;
 export type FoodAuditLogEntry = typeof foodAuditLog.$inferSelect;

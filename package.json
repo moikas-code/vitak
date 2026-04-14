@@ -20,6 +20,8 @@
     "db:migrate:local": "wrangler d1 migrations apply vitak-tracker-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply vitak-tracker-db --remote",
     "db:studio": "drizzle-kit studio",
+    "sync:usda": "bun run scripts/sync-usda-foods.ts",
+    "sync:usda:dry-run": "bun run scripts/sync-usda-foods.ts --dry-run --verbose",
     "prepare": "husky"
   },
   "dependencies": {
