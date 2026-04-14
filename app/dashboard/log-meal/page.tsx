@@ -11,9 +11,11 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { track_dashboard_event } from "@/lib/analytics";
-import { useOfflineMealLogs } from "@/lib/offline/hooks";
+import { useOfflineMealLogs, useOfflineInit, useTokenRefresh } from "@/lib/offline/hooks";
 
 export default function LogMealPage() {
+  useOfflineInit(); // Initialize offline services
+  useTokenRefresh(); // Keep tokens fresh for sync
   const { meal_logs: todayMeals, is_loading: mealsLoading } = useOfflineMealLogs();
   const { data: balances } = api.credit.getAllBalances.useQuery();
 
