@@ -2,7 +2,7 @@ import { LegalLayout } from "@/components/legal/legal-layout";
 
 export default function TermsOfServicePage() {
   return (
-    <LegalLayout title="Terms of Service" lastUpdated="January 2025">
+    <LegalLayout title="Terms of Service" lastUpdated="April 2025">
       <div className="space-y-8">
         <section>
           <h2 className="text-2xl font-bold mb-4">Agreement to Terms</h2>
