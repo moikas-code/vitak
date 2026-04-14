@@ -2,7 +2,7 @@ import { LegalLayout } from "@/components/legal/legal-layout";
 
 export default function PrivacyPolicyPage() {
   return (
-    <LegalLayout title="Privacy Policy" lastUpdated="January 2025">
+    <LegalLayout title="Privacy Policy" lastUpdated="April 2025">
       <div className="space-y-8">
         <section>
           <h2 className="text-2xl font-bold mb-4">Introduction</h2>
@@ -66,10 +66,9 @@ export default function PrivacyPolicyPage() {
           <p className="mb-4">We work with trusted third-party providers to operate our Service:</p>
           <ul className="list-disc pl-6 mb-4">
             <li><strong>Clerk:</strong> Authentication and user management</li>
-            <li><strong>Supabase:</strong> Database hosting and management</li>
+            <li><strong>Cloudflare:</strong> Application hosting, database (D1), and rate limiting (KV)</li>
             <li><strong>Stripe:</strong> Payment processing for donations</li>
-            <li><strong>Upstash:</strong> Redis caching and rate limiting</li>
-            <li><strong>Vercel:</strong> Application hosting and analytics</li>
+            <li><strong>Upstash:</strong> Redis caching</li>
             <li><strong>Discord:</strong> Feedback collection (when you submit feedback)</li>
           </ul>
           <p className="mb-4">
