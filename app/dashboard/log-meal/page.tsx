@@ -11,9 +11,10 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { track_dashboard_event } from "@/lib/analytics";
+import { useOfflineMealLogs } from "@/lib/offline/hooks";
 
 export default function LogMealPage() {
-  const { data: todayMeals } = api.mealLog.getToday.useQuery();
+  const { meal_logs: todayMeals, is_loading: mealsLoading } = useOfflineMealLogs();
   const { data: balances } = api.credit.getAllBalances.useQuery();
 
   useEffect(() => {
@@ -21,7 +22,7 @@ export default function LogMealPage() {
   }, []);
 
   const todayTotal = todayMeals?.reduce(
-    (sum: number, meal: { vitamin_k_consumed_mcg: number }) => sum + (meal.vitamin_k_consumed_mcg ?? 0),
+    (sum: number, meal) => sum + (meal.vitamin_k_consumed_mcg ?? 0),
     0
   ) ?? 0;
 
@@ -92,7 +93,7 @@ export default function LogMealPage() {
           <CardHeader>
             <CardTitle>Today&apos;s Meals</CardTitle>
             <CardDescription>
-              Foods you&apos;ve logged today
+              {mealsLoading ? "Loading meals..." : "Foods you've logged today"}
             </CardDescription>
           </CardHeader>
           <CardContent>
