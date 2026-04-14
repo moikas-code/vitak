@@ -13,11 +13,24 @@ import { track_dashboard_event } from "@/lib/analytics";
 import type { MealLogWithFood } from "@/lib/types";
 
 export default function HistoryPage() {
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
   const [dateRange, setDateRange] = useState(() => {
-    const end_date = new Date();
-    const start_date = new Date();
-    start_date.setDate(start_date.getDate() - 7);
-    return { start_date: start_date.toISOString(), end_date: end_date.toISOString() };
+    // Calculate date range in user's timezone
+    const now = new Date();
+    const localParts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(now);
+    const y = localParts.find(p => p.type === 'year')!.value;
+    const m = localParts.find(p => p.type === 'month')!.value;
+    const d = localParts.find(p => p.type === 'day')!.value;
+    const todayLocal = new Date(`${y}-${m}-${d}`);
+    const weekAgoLocal = new Date(todayLocal);
+    weekAgoLocal.setDate(weekAgoLocal.getDate() - 7);
+    return {
+      start_date: weekAgoLocal.toISOString(),
+      end_date: `${y}-${m}-${d}T23:59:59`,
+    };
   });
 
   useEffect(() => {
@@ -31,11 +44,12 @@ export default function HistoryPage() {
   const { data: balances } = api.credit.getAllBalances.useQuery();
 
   const groupedByDate = mealLogs?.reduce((acc: Record<string, MealLogWithFood[]>, log: MealLogWithFood) => {
-    const date = format(new Date(log.logged_at), "yyyy-MM-dd");
-    if (!acc[date]) {
-      acc[date] = [];
+    // Group by the date in the user's timezone, not UTC
+    const localDate = new Date(log.logged_at).toLocaleDateString('en-CA', { timeZone: tz });
+    if (!acc[localDate]) {
+      acc[localDate] = [];
     }
-    acc[date].push(log);
+    acc[localDate].push(log);
     return acc;
   }, {} as Record<string, MealLogWithFood[]>);
 
@@ -73,10 +87,12 @@ export default function HistoryPage() {
           <Button
             variant="outline"
             onClick={() => {
-              const end_date = new Date();
-              const start_date = new Date();
-              start_date.setDate(start_date.getDate() - 7);
-              setDateRange({ start_date: start_date.toISOString(), end_date: end_date.toISOString() });
+              const now = new Date();
+              const local = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).formatToParts(now);
+              const today = `${local.find(p => p.type === 'year')!.value}-${local.find(p => p.type === 'month')!.value}-${local.find(p => p.type === 'day')!.value}`;
+              const weekAgo = new Date(today);
+              weekAgo.setDate(weekAgo.getDate() - 7);
+              setDateRange({ start_date: weekAgo.toISOString(), end_date: `${today}T23:59:59` });
             }}
           >
             Last 7 days
@@ -84,10 +100,12 @@ export default function HistoryPage() {
           <Button
             variant="outline"
             onClick={() => {
-              const end_date = new Date();
-              const start_date = new Date();
-              start_date.setDate(start_date.getDate() - 30);
-              setDateRange({ start_date: start_date.toISOString(), end_date: end_date.toISOString() });
+              const now = new Date();
+              const local = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).formatToParts(now);
+              const today = `${local.find(p => p.type === 'year')!.value}-${local.find(p => p.type === 'month')!.value}-${local.find(p => p.type === 'day')!.value}`;
+              const monthAgo = new Date(today);
+              monthAgo.setDate(monthAgo.getDate() - 30);
+              setDateRange({ start_date: monthAgo.toISOString(), end_date: `${today}T23:59:59` });
             }}
           >
             Last 30 days
@@ -95,10 +113,12 @@ export default function HistoryPage() {
           <Button
             variant="outline"
             onClick={() => {
-              const end_date = new Date();
-              const start_date = new Date();
-              start_date.setMonth(start_date.getMonth() - 3);
-              setDateRange({ start_date: start_date.toISOString(), end_date: end_date.toISOString() });
+              const now = new Date();
+              const local = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).formatToParts(now);
+              const today = `${local.find(p => p.type === 'year')!.value}-${local.find(p => p.type === 'month')!.value}-${local.find(p => p.type === 'day')!.value}`;
+              const threeMonthsAgo = new Date(today);
+              threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+              setDateRange({ start_date: threeMonthsAgo.toISOString(), end_date: `${today}T23:59:59` });
             }}
           >
             Last 3 months
@@ -174,7 +194,7 @@ export default function HistoryPage() {
                     <div key={date} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-medium">
-                          {format(new Date(date), "EEEE, MMM d")}
+                          {format(new Date(date + "T12:00:00"), "EEEE, MMM d")}
                         </h4>
                         <span className="text-sm font-medium">
                           {dayTotal.toFixed(0)} mcg total
