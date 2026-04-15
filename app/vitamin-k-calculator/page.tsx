@@ -30,42 +30,42 @@ export const metadata: Metadata = {
   },
 };
 
-// Curated common foods — these are the foods warfarin patients actually ask about
-const CURATED_FOODS = [
+// Curated common foods — match patterns for USDA SR Legacy naming
+const CURATED_FOODS: { pattern: string; category: string }[] = [
   // High VK greens
-  { name: "Spinach, raw", category: "vegetables" },
-  { name: "Spinach, cooked", category: "vegetables" },
-  { name: "Kale, raw", category: "vegetables" },
-  { name: "Kale, cooked", category: "vegetables" },
-  { name: "Collard greens, cooked", category: "vegetables" },
-  { name: "Swiss chard, raw", category: "vegetables" },
-  { name: "Broccoli, raw", category: "vegetables" },
-  { name: "Broccoli, cooked", category: "vegetables" },
-  { name: "Brussels sprouts, raw", category: "vegetables" },
-  { name: "Romaine lettuce, raw", category: "vegetables" },
-  { name: "Cabbage, raw", category: "vegetables" },
-  { name: "Asparagus, raw", category: "vegetables" },
-  { name: "Green beans, raw", category: "vegetables" },
-  { name: "Parsley, fresh", category: "herbs_spices" },
+  { pattern: "Kale, raw", category: "vegetables" },
+  { pattern: "Kale, cooked", category: "vegetables" },
+  { pattern: "Spinach, raw", category: "vegetables" },
+  { pattern: "Spinach, cooked", category: "vegetables" },
+  { pattern: "Collard", category: "vegetables" },
+  { pattern: "Swiss chard, raw", category: "vegetables" },
+  { pattern: "Broccoli, raw", category: "vegetables" },
+  { pattern: "Broccoli, cooked", category: "vegetables" },
+  { pattern: "Brussels sprouts, raw", category: "vegetables" },
+  { pattern: "Romaine lettuce, raw", category: "vegetables" },
+  { pattern: "Cabbage, raw", category: "vegetables" },
+  { pattern: "Asparagus, raw", category: "vegetables" },
+  { pattern: "Green beans, raw", category: "vegetables" },
+  { pattern: "Parsley, fresh", category: "herbs_spices" },
   // Moderate VK
-  { name: "Avocado, raw", category: "fruits" },
-  { name: "Green peas, raw", category: "vegetables" },
-  { name: "Kiwi, raw", category: "fruits" },
-  { name: "Blueberries, raw", category: "fruits" },
+  { pattern: "Avocado", category: "fruits" },
+  { pattern: "Peas, green, raw", category: "vegetables" },
+  { pattern: "Kiwi", category: "fruits" },
+  { pattern: "Blueberries, raw", category: "fruits" },
   // Low VK staples
-  { name: "Chicken, breast", category: "proteins" },
-  { name: "Egg, whole, raw", category: "proteins" },
-  { name: "Rice, white, cooked", category: "grains" },
-  { name: "Milk, whole", category: "dairy" },
-  { name: "Banana, raw", category: "fruits" },
-  { name: "Tomato, raw", category: "vegetables" },
-  { name: "Carrot, raw", category: "vegetables" },
-  { name: "Apple, raw", category: "fruits" },
+  { pattern: "Chicken, breast", category: "proteins" },
+  { pattern: "Egg, whole, raw", category: "proteins" },
+  { pattern: "Rice, white, cooked", category: "grains" },
+  { pattern: "Milk, whole", category: "dairy" },
+  { pattern: "Banana, raw", category: "fruits" },
+  { pattern: "Tomato, raw", category: "vegetables" },
+  { pattern: "Carrot, raw", category: "vegetables" },
+  { pattern: "Apple, raw", category: "fruits" },
   // Oils
-  { name: "Soybean oil", category: "fats_oils" },
-  { name: "Canola oil", category: "fats_oils" },
-  { name: "Olive oil", category: "fats_oils" },
-  { name: "Butter, salted", category: "dairy" },
+  { pattern: "Soybean oil", category: "fats_oils" },
+  { pattern: "Canola oil", category: "fats_oils" },
+  { pattern: "Olive oil", category: "fats_oils" },
+  { pattern: "Butter", category: "dairy" },
 ];
 
 export default async function VitaminKCalculatorPage() {
@@ -86,7 +86,7 @@ export default async function VitaminKCalculatorPage() {
     // Build a query that matches the curated food names with prefix matching
     // Using UNION of individual LIKE queries to get the best match per food
     const conditions = CURATED_FOODS.map(
-      (f) => sql`(${foods.name} LIKE ${"%" + f.name + "%"} AND ${foods.category} = ${f.category})`
+      (f) => sql`(${foods.name} LIKE ${"%" + f.pattern + "%"} AND ${foods.category} = ${f.category})`
     );
 
     const data = await db
@@ -104,15 +104,18 @@ export default async function VitaminKCalculatorPage() {
       .all();
 
     if (data && data.length > 0) {
-      // Deduplicate: keep only the most relevant match per curated food
-      const seen = new Map<string, CommonFood>();
+      // Deduplicate per pattern: keep the shortest matching name per curated food
+      const bestMatch = new Map<string, CommonFood>();
       for (const row of data) {
-        const key = row.name.toLowerCase();
-        // Prefer shorter names (the base food, not "Salmon, pink, canned, drained...")
-        const existing = seen.get(key.split(",")[0]);
+        const matchedPattern = CURATED_FOODS.find(f =>
+          row.name.toLowerCase().includes(f.pattern.toLowerCase()) && row.category === f.category
+        );
+        if (!matchedPattern) continue;
+        const key = matchedPattern.pattern;
+        const existing = bestMatch.get(key);
         if (!existing || row.name.length < existing.name.length) {
-          seen.set(key.split(",")[0], {
-            id: row.id,
+          bestMatch.set(key, {
+            id: row.id as string | number,
             name: row.name,
             vitamin_k_mcg_per_100g: row.vitamin_k_mcg_per_100g,
             category: row.category,
@@ -121,7 +124,7 @@ export default async function VitaminKCalculatorPage() {
           });
         }
       }
-      commonFoods = Array.from(seen.values());
+      commonFoods = Array.from(bestMatch.values());
     }
   } catch (error) {
     console.error("Failed to fetch common foods:", error);
