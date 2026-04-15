@@ -250,7 +250,7 @@ export default async function WarfarinDietTrackerPage() {
               <CardHeader>
                 <CardTitle className="text-2xl">Ready to Take Control of Your Warfarin Diet?</CardTitle>
                 <CardDescription className="text-lg">
-                  Join thousands of patients who are successfully managing their vitamin K intake
+                  Join patients who are successfully managing their vitamin K intake
                 </CardDescription>
               </CardHeader>
               <CardContent>
