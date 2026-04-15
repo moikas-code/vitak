@@ -6,6 +6,9 @@ import { getDb } from "@/lib/db";
 import { foods } from "@/lib/db/schema";
 import { desc, sql, eq } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 3600; // Revalidate every hour
+
 export const metadata: Metadata = {
   title: "Vitamin K Foods List for Warfarin Patients — 7,800+ Foods | VitaK Tracker",
   description:
