@@ -35,6 +35,8 @@ const isPublicRoute = createRouteMatcher([
   "/faq",
   "/blog(.*)",
   "/api-docs",
+  "/api/x402(.*)",
+  "/.well-known(.*)",
 ]);
 
 function addSecurityHeaders(response: NextResponse) {
