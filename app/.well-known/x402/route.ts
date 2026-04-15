@@ -58,7 +58,7 @@ export async function GET() {
     ],
     data_sources: {
       usda_verified: {
-        count: 38,
+        count: 7793,
         description: "Verified against USDA FoodData Central SR Legacy data",
         nutrient: "Vitamin K (phylloquinone), nutrient ID 1185",
       },

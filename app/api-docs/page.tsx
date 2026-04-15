@@ -101,17 +101,17 @@ const endpoints = [
 ];
 
 const categories = [
-  { name: "vegetables", count: 36, description: "Leafy greens, cruciferous vegetables, and other VK-rich vegetables" },
-  { name: "herbs_spices", count: 4, description: "Fresh herbs with very high VK concentration per 100g" },
-  { name: "fruits", count: 8, description: "Fruits with moderate to low VK content" },
-  { name: "proteins", count: 8, description: "Protein sources, most with near-zero VK" },
-  { name: "fats_oils", count: 5, description: "Cooking oils with varying VK content" },
-  { name: "grains", count: 5, description: "Grains and starches, generally low VK" },
-  { name: "dairy", count: 4, description: "Dairy products, near-zero VK" },
-  { name: "beverages", count: 4, description: "Common beverages" },
+  { name: "vegetables", count: 1480, description: "Leafy greens, cruciferous vegetables, and other VK-rich vegetables" },
+  { name: "herbs_spices", count: 63, description: "Fresh herbs with very high VK concentration per 100g" },
+  { name: "fruits", count: 696, description: "Fruits with moderate to low VK content" },
+  { name: "proteins", count: 2992, description: "Protein sources, most with near-zero VK" },
+  { name: "fats_oils", count: 287, description: "Cooking oils with varying VK content" },
+  { name: "grains", count: 480, description: "Grains and starches, generally low VK" },
+  { name: "dairy", count: 612, description: "Dairy products, near-zero VK" },
+  { name: "beverages", count: 213, description: "Common beverages" },
   { name: "prepared_foods", count: 15, description: "Restaurant and fast food estimates (not USDA-verified)" },
-  { name: "nuts_seeds", count: 0, description: "Coming soon" },
-  { name: "other", count: 0, description: "Miscellaneous items" },
+  { name: "nuts_seeds", count: 148, description: "Nuts and seeds with varying VK" },
+  { name: "other", count: 887, description: "Miscellaneous items" },
 ];
 
 export default function ApiDocsPage() {
