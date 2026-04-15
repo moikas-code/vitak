@@ -1,247 +1,334 @@
 import { Metadata } from "next";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Footer } from "@/components/ui/footer";
 import { PublicHeader } from "@/components/ui/public-header";
-import { AlertCircle, Apple, Carrot, Leaf, Search } from "lucide-react";
-import { BreadcrumbLD } from "@/components/seo/json-ld";
-
-export const dynamic = 'force-dynamic';
-export const revalidate = 86400; // Revalidate daily
+import Link from "next/link";
+import { getDb } from "@/lib/db";
+import { foods } from "@/lib/db/schema";
+import { desc, sql, eq } from "drizzle-orm";
 
 export const metadata: Metadata = {
-  title: "Vitamin K Foods List for Warfarin Patients - Complete Guide",
-  description: "Comprehensive guide to vitamin K content in foods for warfarin (Coumadin) patients. Learn which foods to limit, moderate, and enjoy freely while maintaining stable INR levels.",
-  keywords: ["vitamin k foods", "warfarin diet", "coumadin foods to avoid", "high vitamin k vegetables", "low vitamin k foods", "INR diet", "blood thinner diet"],
+  title: "Vitamin K Foods List for Warfarin Patients — 7,800+ Foods | VitaK Tracker",
+  description:
+    "Complete vitamin K food database for warfarin patients. Browse 7,800+ foods with USDA-verified vitamin K values per 100g. Filter by category and VK content level.",
   openGraph: {
-    title: "Vitamin K Foods List for Warfarin Patients",
-    description: "Complete guide to managing vitamin K intake while on warfarin. Food lists, serving sizes, and tracking tips.",
-    type: "article",
+    title: "Vitamin K Foods Guide — 7,800+ Foods",
+    description: "Browse USDA-verified vitamin K values for warfarin diet management.",
   },
 };
 
-export default function VitaminKFoodsPage() {
+// ─── Data fetching ──────────────────────────────────────────────
+
+async function getFoodsByLevel() {
+  const db = await getDb();
+
+  // High VK: >100 mcg/100g
+  const highVk = await db
+    .select({
+      id: foods.id,
+      name: foods.name,
+      vitaminK: foods.vitaminKMcgPer100g,
+      category: foods.category,
+      portionGrams: foods.commonPortionSizeG,
+      portionName: foods.commonPortionName,
+      calories: foods.caloriesPer100g,
+      fdcId: foods.fdcId,
+      dataSource: foods.dataSource,
+    })
+    .from(foods)
+    .where(sql`vitamin_k_mcg_per_100g > 100`)
+    .orderBy(desc(foods.vitaminKMcgPer100g))
+    .limit(150);
+
+  // Moderate VK: 20-100 mcg/100g
+  const moderateVk = await db
+    .select({
+      id: foods.id,
+      name: foods.name,
+      vitaminK: foods.vitaminKMcgPer100g,
+      category: foods.category,
+      portionGrams: foods.commonPortionSizeG,
+      portionName: foods.commonPortionName,
+      calories: foods.caloriesPer100g,
+      fdcId: foods.fdcId,
+      dataSource: foods.dataSource,
+    })
+    .from(foods)
+    .where(sql`vitamin_k_mcg_per_100g BETWEEN 20 AND 100`)
+    .orderBy(desc(foods.vitaminKMcgPer100g))
+    .limit(150);
+
+  // Low VK: <20 mcg/100g (sample)
+  const lowVk = await db
+    .select({
+      id: foods.id,
+      name: foods.name,
+      vitaminK: foods.vitaminKMcgPer100g,
+      category: foods.category,
+      portionGrams: foods.commonPortionSizeG,
+      portionName: foods.commonPortionName,
+      calories: foods.caloriesPer100g,
+      fdcId: foods.fdcId,
+      dataSource: foods.dataSource,
+    })
+    .from(foods)
+    .where(sql`vitamin_k_mcg_per_100g > 0 AND vitamin_k_mcg_per_100g < 20`)
+    .orderBy(desc(foods.vitaminKMcgPer100g))
+    .limit(100);
+
+  // Zero VK
+  const zeroVkCount = await db
+    .select({ cnt: sql<number>`count(*)` })
+    .from(foods)
+    .where(eq(foods.vitaminKMcgPer100g, 0));
+
+  // Total counts
+  const totalFoods = await db.select({ cnt: sql<number>`count(*)` }).from(foods);
+  const usdaCount = await db
+    .select({ cnt: sql<number>`count(*)` })
+    .from(foods)
+    .where(eq(foods.dataSource, "usda_fdc_sr_legacy"));
+
+  // Category summary
+  const categoryCounts = await db
+    .select({
+      category: foods.category,
+      count: sql<number>`count(*)`,
+      avgVk: sql<number>`ROUND(AVG(vitamin_k_mcg_per_100g), 1)`,
+    })
+    .from(foods)
+    .where(sql`vitamin_k_mcg_per_100g > 0`)
+    .groupBy(foods.category)
+    .orderBy(sql`avg(vitamin_k_mcg_per_100g) DESC`);
+
+  return {
+    highVk,
+    moderateVk,
+    lowVk,
+    zeroVkCount: zeroVkCount[0]?.cnt ?? 0,
+    totalFoods: totalFoods[0]?.cnt ?? 0,
+    usdaFoods: usdaCount[0]?.cnt ?? 0,
+    categoryCounts,
+  };
+}
+
+// ─── Component ──────────────────────────────────────────────────
+
+function FoodRow({ food }: { food: { name: string; vitaminK: number; portionName: string; portionGrams: number; calories: number | null; dataSource: string | null } }) {
+  const portionVk = Math.ceil((food.portionGrams / 100) * food.vitaminK);
+  return (
+    <tr className="border-b border-gray-100 hover:bg-gray-50">
+      <td className="py-2 px-3 text-sm">{food.name}</td>
+      <td className="py-2 px-3 text-sm text-right font-mono">{food.vitaminK}</td>
+      <td className="py-2 px-3 text-sm text-right font-mono">{portionVk}</td>
+      <td className="py-2 px-3 text-sm text-gray-500">
+        {food.portionName} ({food.portionGrams}g)
+      </td>
+      <td className="py-2 px-3 text-xs">
+        {food.calories != null ? `${food.calories}` : "—"}
+      </td>
+      <td className="py-2 px-3">
+        {food.dataSource === "usda_fdc_sr_legacy" ? (
+          <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded">USDA</span>
+        ) : (
+          <span className="bg-gray-100 text-gray-600 text-xs px-1.5 py-0.5 rounded">Est.</span>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+function FoodTable({ foods: foodList, showPortionVk = true }: { foods: ReturnType<typeof getFoodsByLevel> extends Promise<{ highVk: infer T }> ? T : never; showPortionVk?: boolean }) {
+  if (!foodList || foodList.length === 0) return null;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-left">
+        <thead>
+          <tr className="border-b-2 border-gray-200">
+            <th className="py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Food</th>
+            <th className="py-2 px-3 text-xs font-semibold text-gray-500 uppercase text-right">VK/100g</th>
+            {showPortionVk && (
+              <th className="py-2 px-3 text-xs font-semibold text-gray-500 uppercase text-right">VK/portion</th>
+            )}
+            <th className="py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Portion</th>
+            <th className="py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Cal/100g</th>
+            <th className="py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Source</th>
+          </tr>
+        </thead>
+        <tbody>
+          {foodList.map((f: any) => <FoodRow key={f.id} food={f} />)}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export default async function VitaminKFoodsPage() {
+  const data = await getFoodsByLevel();
+
   return (
     <>
-      <BreadcrumbLD items={[
-        { name: "Home", url: "/" },
-        { name: "Vitamin K Foods for Warfarin", url: "/vitamin-k-foods-warfarin" }
-      ]} />
-      
-      <div className="min-h-screen bg-gray-50">
-        <PublicHeader />
+      <PublicHeader />
+      <main className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* Hero */}
+        <div className="mb-8">
+          <div className="inline-flex items-center gap-2 rounded-full bg-green-50 border border-green-200 px-3 py-1 text-sm text-green-700 mb-4">
+            🥬 {data.totalFoods.toLocaleString()} foods in database
+          </div>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            Vitamin K Foods List for Warfarin Patients
+          </h1>
+          <p className="text-lg text-gray-600 mb-2">
+            Complete food database with USDA-verified vitamin K values.
+            <strong> The key is consistency</strong>, not avoidance — most patients can safely consume 70–120 mcg daily.
+          </p>
+          <p className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+            ⚠️ <strong>Medical Disclaimer:</strong> This guide is for educational purposes only.
+            Always consult your healthcare provider before making dietary changes while on warfarin.
+          </p>
+        </div>
 
-        <main className="container mx-auto px-4 py-8">
-          <article className="max-w-4xl mx-auto">
-            <h1 className="text-4xl font-bold mb-4">
-              Vitamin K Foods Guide for Warfarin Patients
-            </h1>
-            
-            <p className="text-xl text-gray-600 mb-8">
-              Understanding vitamin K content in foods is crucial for maintaining stable INR levels 
-              while taking warfarin (Coumadin). This comprehensive guide helps you make informed 
-              dietary choices.
-            </p>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white border rounded-lg p-4">
+            <div className="text-2xl font-bold text-gray-900">{data.totalFoods.toLocaleString()}</div>
+            <div className="text-sm text-gray-500">Total foods</div>
+          </div>
+          <div className="bg-white border rounded-lg p-4">
+            <div className="text-2xl font-bold text-green-600">{data.usdaFoods.toLocaleString()}</div>
+            <div className="text-sm text-gray-500">USDA-verified</div>
+          </div>
+          <div className="bg-white border rounded-lg p-4">
+            <div className="text-2xl font-bold text-blue-600">{(data.highVk.length + data.moderateVk.length + data.lowVk.length).toLocaleString()}</div>
+            <div className="text-sm text-gray-500">With vitamin K data</div>
+          </div>
+          <div className="bg-white border rounded-lg p-4">
+            <div className="text-2xl font-bold text-gray-400">{data.zeroVkCount.toLocaleString()}</div>
+            <div className="text-sm text-gray-500">Zero VK (safe)</div>
+          </div>
+        </div>
 
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-8">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
-                <div>
-                  <p className="font-medium text-yellow-900">Important Medical Disclaimer</p>
-                  <p className="text-sm text-yellow-800">
-                    This guide is for educational purposes only. Always consult your healthcare 
-                    provider before making dietary changes while on anticoagulation therapy.
-                  </p>
+        {/* Category Summary */}
+        <section className="mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Foods with Vitamin K by Category</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {data.categoryCounts.map((cat: any) => (
+              <div key={cat.category} className="border rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-900 capitalize">
+                    {String(cat.category).replace(/_/g, " ")}
+                  </span>
+                  <span className="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded-full">
+                    {cat.count}
+                  </span>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Avg: {cat.avgVk} mcg/100g
                 </div>
               </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Understanding VK */}
+        <section className="mb-8 bg-gray-50 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-3">Understanding Vitamin K &amp; Warfarin</h2>
+          <p className="text-gray-600 mb-4">
+            Vitamin K plays a crucial role in blood clotting. Warfarin (Coumadin) works by reducing
+            vitamin K&apos;s effectiveness, preventing dangerous blood clots. Consuming <strong>consistent
+            amounts</strong> of vitamin K helps maintain stable INR levels and ensures your warfarin dose
+            remains effective.
+          </p>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <h3 className="font-semibold text-red-800 mb-1">🔴 High VK (&gt;100 mcg/100g)</h3>
+              <p className="text-sm text-red-700">
+                {data.highVk.length} foods. Limit or maintain very consistent intake. These can significantly affect INR if intake varies.
+              </p>
             </div>
-
-            <section className="mb-12">
-              <h2 className="text-2xl font-bold mb-4">Understanding Vitamin K and Warfarin</h2>
-              <p className="mb-4">
-                Vitamin K plays a crucial role in blood clotting. Warfarin works by reducing 
-                vitamin K&apos;s effectiveness, preventing dangerous blood clots. Consuming 
-                consistent amounts of vitamin K helps maintain stable INR levels and ensures 
-                your warfarin dose remains effective.
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h3 className="font-semibold text-yellow-800 mb-1">🟡 Moderate (20–100 mcg/100g)</h3>
+              <p className="text-sm text-yellow-700">
+                {data.moderateVk.length} foods. Enjoy in moderation with consistent daily intake.
               </p>
-              <p className="mb-4">
-                The key is <strong>consistency</strong>, not avoidance. Most patients can safely 
-                consume 70-120 mcg of vitamin K daily.
+            </div>
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <h3 className="font-semibold text-green-800 mb-1">🟢 Low (&lt;20 mcg/100g)</h3>
+              <p className="text-sm text-green-700">
+                {data.lowVk.length}+ foods. Generally safe to eat freely without affecting INR.
               </p>
-            </section>
+            </div>
+          </div>
+        </section>
 
-            <section className="mb-12">
-              <h2 className="text-2xl font-bold mb-6">Foods by Vitamin K Content</h2>
-              
-              <div className="grid gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-red-600">
-                      <Leaf className="h-5 w-5" />
-                      High Vitamin K Foods (&gt;100 mcg per serving)
-                    </CardTitle>
-                    <CardDescription>
-                      Limit these foods or maintain very consistent intake
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <h4 className="font-medium mb-2">Leafy Greens</h4>
-                        <ul className="text-sm space-y-1 text-gray-600">
-                          <li>• Kale (1 cup): 547 mcg</li>
-                          <li>• Spinach, cooked (1 cup): 444 mcg</li>
-                          <li>• Collard greens (1 cup): 418 mcg</li>
-                          <li>• Swiss chard (1 cup): 298 mcg</li>
-                          <li>• Turnip greens (1 cup): 265 mcg</li>
-                        </ul>
-                      </div>
-                      <div>
-                        <h4 className="font-medium mb-2">Other High Sources</h4>
-                        <ul className="text-sm space-y-1 text-gray-600">
-                          <li>• Brussels sprouts (1 cup): 156 mcg</li>
-                          <li>• Broccoli (1 cup): 110 mcg</li>
-                          <li>• Parsley (¼ cup): 246 mcg</li>
-                          <li>• Green tea (1 cup): 100+ mcg</li>
-                          <li>• Natto (3 oz): 850 mcg</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+        {/* High VK Table */}
+        <section className="mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-1">
+            High Vitamin K Foods
+            <span className="ml-2 text-sm font-normal text-red-600">(&gt;100 mcg per 100g)</span>
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Showing top {data.highVk.length} of {data.highVk.length} foods. Values are per 100g and per common portion (ceil rounded for safety).
+          </p>
+          <div className="bg-white border rounded-lg overflow-hidden">
+            <FoodTable foods={data.highVk} />
+          </div>
+        </section>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-yellow-600">
-                      <Apple className="h-5 w-5" />
-                      Moderate Vitamin K Foods (20-100 mcg per serving)
-                    </CardTitle>
-                    <CardDescription>
-                      Enjoy in moderation with consistent intake
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <h4 className="font-medium mb-2">Vegetables</h4>
-                        <ul className="text-sm space-y-1 text-gray-600">
-                          <li>• Asparagus (1 cup): 56 mcg</li>
-                          <li>• Green beans (1 cup): 43 mcg</li>
-                          <li>• Green peas (1 cup): 41 mcg</li>
-                          <li>• Cabbage (1 cup): 82 mcg</li>
-                          <li>• Lettuce, green leaf (1 cup): 46 mcg</li>
-                        </ul>
-                      </div>
-                      <div>
-                        <h4 className="font-medium mb-2">Other Foods</h4>
-                        <ul className="text-sm space-y-1 text-gray-600">
-                          <li>• Avocado (1 medium): 30 mcg</li>
-                          <li>• Kiwi (1 medium): 28 mcg</li>
-                          <li>• Blueberries (1 cup): 29 mcg</li>
-                          <li>• Pine nuts (1 oz): 25 mcg</li>
-                          <li>• Canola oil (1 tbsp): 25 mcg</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+        {/* Moderate VK Table */}
+        <section className="mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-1">
+            Moderate Vitamin K Foods
+            <span className="ml-2 text-sm font-normal text-yellow-600">(20–100 mcg per 100g)</span>
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Showing {data.moderateVk.length} of {data.moderateVk.length} foods.
+          </p>
+          <div className="bg-white border rounded-lg overflow-hidden">
+            <FoodTable foods={data.moderateVk} />
+          </div>
+        </section>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-green-600">
-                      <Carrot className="h-5 w-5" />
-                      Low Vitamin K Foods (&lt;20 mcg per serving)
-                    </CardTitle>
-                    <CardDescription>
-                      Generally safe to eat freely
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <h4 className="font-medium mb-2">Fruits & Vegetables</h4>
-                        <ul className="text-sm space-y-1 text-gray-600">
-                          <li>• Tomatoes (1 cup): 7 mcg</li>
-                          <li>• Carrots (1 cup): 10 mcg</li>
-                          <li>• Bell peppers (1 cup): 5 mcg</li>
-                          <li>• Apples (1 medium): 3 mcg</li>
-                          <li>• Bananas (1 medium): 0.5 mcg</li>
-                        </ul>
-                      </div>
-                      <div>
-                        <h4 className="font-medium mb-2">Proteins & Grains</h4>
-                        <ul className="text-sm space-y-1 text-gray-600">
-                          <li>• Chicken breast (4 oz): 0.3 mcg</li>
-                          <li>• Salmon (4 oz): 0.1 mcg</li>
-                          <li>• Eggs (1 large): 0.1 mcg</li>
-                          <li>• White rice (1 cup): 0 mcg</li>
-                          <li>• Pasta (1 cup): 0.1 mcg</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </section>
+        {/* Low VK Table */}
+        <section className="mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-1">
+            Low Vitamin K Foods
+            <span className="ml-2 text-sm font-normal text-green-600">(&lt;20 mcg per 100g)</span>
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Showing {data.lowVk.length} sample foods. {data.zeroVkCount.toLocaleString()} more foods have 0 mcg vitamin K.
+          </p>
+          <div className="bg-white border rounded-lg overflow-hidden">
+            <FoodTable foods={data.lowVk} />
+          </div>
+        </section>
 
-            <section className="mb-12">
-              <h2 className="text-2xl font-bold mb-4">Tips for Managing Vitamin K Intake</h2>
-              <div className="bg-blue-50 rounded-lg p-6">
-                <ol className="space-y-3">
-                  <li className="flex gap-2">
-                    <span className="font-bold text-blue-600">1.</span>
-                    <span><strong>Be Consistent:</strong> Eat similar amounts of vitamin K daily rather than avoiding it completely.</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="font-bold text-blue-600">2.</span>
-                    <span><strong>Track Your Intake:</strong> Use VitaK Tracker to monitor your daily vitamin K consumption.</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="font-bold text-blue-600">3.</span>
-                    <span><strong>Read Labels:</strong> Check nutrition labels, especially on green juices and meal replacements.</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="font-bold text-blue-600">4.</span>
-                    <span><strong>Cook Consistently:</strong> Cooking methods don&apos;t significantly change vitamin K content.</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="font-bold text-blue-600">5.</span>
-                    <span><strong>Communicate:</strong> Tell your doctor about any major dietary changes.</span>
-                  </li>
-                </ol>
-              </div>
-            </section>
+        {/* Tips */}
+        <section className="mb-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Tips for Managing Vitamin K on Warfarin</h2>
+          <ol className="list-decimal list-inside space-y-2 text-gray-700">
+            <li><strong>Be Consistent:</strong> Eat similar amounts of vitamin K daily rather than avoiding it completely.</li>
+            <li><strong>Track Your Intake:</strong> Use <Link href="/auth/sign-up" className="text-blue-600 hover:underline">VitaK Tracker</Link> to monitor your daily vitamin K consumption.</li>
+            <li><strong>Read Labels:</strong> Check nutrition labels, especially on green juices and meal replacements.</li>
+            <li><strong>Cook Consistently:</strong> Cooking methods don&apos;t significantly change vitamin K content.</li>
+            <li><strong>Communicate:</strong> Tell your doctor about any major dietary changes.</li>
+          </ol>
+        </section>
 
-            <section className="mb-12">
-              <Card className="bg-gradient-to-r from-primary/10 to-primary/5">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Search className="h-5 w-5" />
-                    Start Tracking Your Vitamin K Today
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="mb-4">
-                    VitaK Tracker makes it easy to monitor your vitamin K intake with our 
-                    comprehensive food database and credit-based tracking system.
-                  </p>
-                  <div className="flex gap-4">
-                    <Link href="/auth/sign-up">
-                      <Button size="lg">Create Free Account</Button>
-                    </Link>
-                    <Link href="/">
-                      <Button size="lg" variant="outline">Learn More</Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-          </article>
-        </main>
-
-        <Footer />
-      </div>
+        {/* CTA */}
+        <div className="text-center bg-gray-900 text-white rounded-xl p-8">
+          <h2 className="text-2xl font-bold mb-2">Start Tracking Your Vitamin K Today</h2>
+          <p className="text-gray-300 mb-4">
+            VitaK Tracker makes it easy to monitor your vitamin K intake with our database of {data.totalFoods.toLocaleString()} foods.
+          </p>
+          <Link
+            href="/auth/sign-up"
+            className="inline-block bg-white text-gray-900 font-semibold px-6 py-3 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            Create Free Account
+          </Link>
+        </div>
+      </main>
+      <Footer />
     </>
   );
 }
