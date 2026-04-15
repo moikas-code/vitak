@@ -54,8 +54,7 @@ export default function WarfarinDietTrackerPage() {
             </h1>
             <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
               Managing vitamin K intake while on warfarin doesn&apos;t have to be complicated. 
-              VitaK Tracker makes it simple with our innovative credit system and comprehensive 
-              food database.
+              VitaK Tracker makes it simple with our innovative credit system and 7,800+ food database.
             </p>
             <div className="flex gap-4 justify-center">
               <Link href="/auth/sign-up">
@@ -134,8 +133,8 @@ export default function WarfarinDietTrackerPage() {
                 </CardHeader>
                 <CardContent>
                   <CardDescription>
-                    Access accurate vitamin K content for thousands of foods. Search by 
-                    name, scan barcodes, or browse by category to log meals quickly.
+                    Access accurate vitamin K content for 7,800+ foods sourced from USDA
+                    FoodData Central. Search by name, scan barcodes, or browse by category.
                   </CardDescription>
                 </CardContent>
               </Card>
@@ -208,7 +207,7 @@ export default function WarfarinDietTrackerPage() {
                   <div>
                     <h3 className="font-bold text-lg mb-2">Log Your Meals</h3>
                     <p className="text-gray-600">
-                      Search our database or scan barcodes to add foods. The app automatically 
+                      Search our 7,800+ food database or scan barcodes to add foods. The app automatically
                       calculates vitamin K content based on portion size.
                     </p>
                   </div>
@@ -287,9 +286,9 @@ export default function WarfarinDietTrackerPage() {
                   How accurate is the vitamin K database?
                 </summary>
                 <p className="mt-2 text-gray-600">
-                  Our database is compiled from trusted nutritional sources and regularly updated. 
-                  However, vitamin K content can vary, so always consult your healthcare provider 
-                  for specific guidance.
+                  Our database includes 7,800+ foods sourced from USDA FoodData Central SR Legacy data
+                  with verified vitamin K values. However, vitamin K content can vary naturally, so always
+                  consult your healthcare provider for specific guidance.
                 </p>
               </details>
 
