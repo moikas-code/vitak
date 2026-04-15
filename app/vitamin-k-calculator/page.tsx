@@ -5,10 +5,10 @@ import { BreadcrumbLD } from "@/components/seo/json-ld";
 import { VitaminKCalculatorClient } from "@/components/vitamin-k-calculator-client";
 import { getDb } from "@/lib/db";
 import { foods } from "@/lib/db/schema";
-import { sql } from "drizzle-orm";
+import { sql, or } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 3600; // Revalidate hourly
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Free Vitamin K Calculator - Calculate mcg for Warfarin Patients",
@@ -25,12 +25,22 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Vitamin K Calculator for Warfarin Patients",
     description:
-      "Free tool to calculate total vitamin K content in meals from 7,800+ USDA-verified foods. Essential for warfarin management.",
+      "Free tool to calculate total vitamin K content in meals from 7,800+ USDA-verified foods.",
     type: "website",
   },
 };
 
-// Curated common foods — match patterns for USDA SR Legacy naming
+interface CommonFood {
+  id: string | number;
+  name: string;
+  vitamin_k_mcg_per_100g: number;
+  category: string | null;
+  common_portion_name: string | null;
+  common_portion_size_g: number | null;
+}
+
+// Curated foods warfarin patients actually search for
+// Pattern matches USDA SR Legacy naming, category narrows to avoid cross-category matches
 const CURATED_FOODS: { pattern: string; category: string }[] = [
   // High VK greens
   { pattern: "Kale, raw", category: "vegetables" },
@@ -42,17 +52,18 @@ const CURATED_FOODS: { pattern: string; category: string }[] = [
   { pattern: "Broccoli, raw", category: "vegetables" },
   { pattern: "Broccoli, cooked", category: "vegetables" },
   { pattern: "Brussels sprouts, raw", category: "vegetables" },
-  { pattern: "Romaine lettuce, raw", category: "vegetables" },
+  { pattern: "Romaine lettuce", category: "vegetables" },
   { pattern: "Cabbage, raw", category: "vegetables" },
   { pattern: "Asparagus, raw", category: "vegetables" },
   { pattern: "Green beans, raw", category: "vegetables" },
+  { pattern: "Turnip greens", category: "vegetables" },
   { pattern: "Parsley, fresh", category: "herbs_spices" },
   // Moderate VK
-  { pattern: "Avocado", category: "fruits" },
+  { pattern: "Avocado, raw", category: "fruits" },
   { pattern: "Peas, green, raw", category: "vegetables" },
   { pattern: "Kiwi", category: "fruits" },
   { pattern: "Blueberries, raw", category: "fruits" },
-  // Low VK staples
+  // Low VK
   { pattern: "Chicken, breast", category: "proteins" },
   { pattern: "Egg, whole, raw", category: "proteins" },
   { pattern: "Rice, white, cooked", category: "grains" },
@@ -69,29 +80,18 @@ const CURATED_FOODS: { pattern: string; category: string }[] = [
 ];
 
 export default async function VitaminKCalculatorPage() {
-  interface CommonFood {
-    id: string | number;
-    name: string;
-    vitamin_k_mcg_per_100g: number;
-    category: string | null;
-    common_portion_name: string | null;
-    common_portion_size_g: number | null;
-  }
-
   let commonFoods: CommonFood[] = [];
 
   try {
     const db = await getDb();
 
-    // Build a query that matches the curated food names with prefix matching
-    // Using UNION of individual LIKE queries to get the best match per food
-    const conditions = CURATED_FOODS.map(
-      (f) => sql`(${foods.name} LIKE ${"%" + f.pattern + "%"} AND ${foods.category} = ${f.category})`
+    // Build OR conditions: (name LIKE '%pattern%' AND category = 'cat')
+    const conditions = CURATED_FOODS.map((f) =>
+      sql`(${foods.name} LIKE ${"%" + f.pattern + "%"} AND ${foods.category} = ${f.category})`
     );
 
     const data = await db
       .select({
-        id: foods.id,
         name: foods.name,
         vitamin_k_mcg_per_100g: foods.vitaminKMcgPer100g,
         category: foods.category,
@@ -99,23 +99,26 @@ export default async function VitaminKCalculatorPage() {
         common_portion_size_g: foods.commonPortionSizeG,
       })
       .from(foods)
-      .where(sql.join(conditions, " OR "))
+      .where(or(...conditions))
       .orderBy(foods.name)
       .all();
 
     if (data && data.length > 0) {
-      // Deduplicate per pattern: keep the shortest matching name per curated food
+      // Deduplicate: keep the shortest name per curated pattern
       const bestMatch = new Map<string, CommonFood>();
       for (const row of data) {
-        const matchedPattern = CURATED_FOODS.find(f =>
-          row.name.toLowerCase().includes(f.pattern.toLowerCase()) && row.category === f.category
+        const matched = CURATED_FOODS.find(
+          (f) =>
+            row.name.toLowerCase().includes(f.pattern.toLowerCase()) &&
+            row.category === f.category
         );
-        if (!matchedPattern) continue;
-        const key = matchedPattern.pattern;
+        if (!matched) continue;
+        const key = matched.pattern;
         const existing = bestMatch.get(key);
+        // Prefer shorter names (base food, not "Salmon, pink, canned, with bones...")
         if (!existing || row.name.length < existing.name.length) {
           bestMatch.set(key, {
-            id: row.id as string | number,
+            id: key, // use pattern as stable key
             name: row.name,
             vitamin_k_mcg_per_100g: row.vitamin_k_mcg_per_100g,
             category: row.category,
@@ -128,18 +131,21 @@ export default async function VitaminKCalculatorPage() {
     }
   } catch (error) {
     console.error("Failed to fetch common foods:", error);
-    // Fallback with accurate USDA-verified values
+  }
+
+  // Always provide fallback
+  if (commonFoods.length === 0) {
     commonFoods = [
-      { id: 0, name: "Spinach, raw", vitamin_k_mcg_per_100g: 483, category: "vegetables", common_portion_name: "1 cup", common_portion_size_g: 30 },
-      { id: 0, name: "Spinach, cooked", vitamin_k_mcg_per_100g: 494, category: "vegetables", common_portion_name: "1 cup", common_portion_size_g: 180 },
-      { id: 0, name: "Kale, raw", vitamin_k_mcg_per_100g: 390, category: "vegetables", common_portion_name: "1 cup", common_portion_size_g: 21 },
-      { id: 0, name: "Broccoli, cooked", vitamin_k_mcg_per_100g: 141, category: "vegetables", common_portion_name: "1 cup", common_portion_size_g: 156 },
-      { id: 0, name: "Romaine lettuce, raw", vitamin_k_mcg_per_100g: 102, category: "vegetables", common_portion_name: "1 cup", common_portion_size_g: 47 },
-      { id: 0, name: "Cabbage, raw", vitamin_k_mcg_per_100g: 76, category: "vegetables", common_portion_name: "1 cup", common_portion_size_g: 89 },
-      { id: 0, name: "Chicken, breast", vitamin_k_mcg_per_100g: 0.3, category: "proteins", common_portion_name: "1 breast", common_portion_size_g: 172 },
-      { id: 0, name: "Egg, whole, raw", vitamin_k_mcg_per_100g: 0.3, category: "proteins", common_portion_name: "1 large", common_portion_size_g: 50 },
-      { id: 0, name: "Rice, white, cooked", vitamin_k_mcg_per_100g: 0, category: "grains", common_portion_name: "1 cup", common_portion_size_g: 158 },
-      { id: 0, name: "Banana, raw", vitamin_k_mcg_per_100g: 0.5, category: "fruits", common_portion_name: "1 medium", common_portion_size_g: 118 },
+      { id: "spinach-raw", name: "Spinach, raw", vitamin_k_mcg_per_100g: 483, category: "vegetables", common_portion_name: "1 cup", common_portion_size_g: 30 },
+      { id: "spinach-cooked", name: "Spinach, cooked", vitamin_k_mcg_per_100g: 494, category: "vegetables", common_portion_name: "1 cup", common_portion_size_g: 180 },
+      { id: "kale-raw", name: "Kale, raw", vitamin_k_mcg_per_100g: 390, category: "vegetables", common_portion_name: "1 cup", common_portion_size_g: 21 },
+      { id: "broccoli-cooked", name: "Broccoli, cooked", vitamin_k_mcg_per_100g: 141, category: "vegetables", common_portion_name: "1 cup", common_portion_size_g: 156 },
+      { id: "romaine", name: "Romaine lettuce, raw", vitamin_k_mcg_per_100g: 102, category: "vegetables", common_portion_name: "1 cup", common_portion_size_g: 47 },
+      { id: "cabbage", name: "Cabbage, raw", vitamin_k_mcg_per_100g: 76, category: "vegetables", common_portion_name: "1 cup", common_portion_size_g: 89 },
+      { id: "chicken", name: "Chicken, breast", vitamin_k_mcg_per_100g: 0.3, category: "proteins", common_portion_name: "1 breast", common_portion_size_g: 172 },
+      { id: "egg", name: "Egg, whole, raw", vitamin_k_mcg_per_100g: 0.3, category: "proteins", common_portion_name: "1 large", common_portion_size_g: 50 },
+      { id: "rice", name: "Rice, white, cooked", vitamin_k_mcg_per_100g: 0, category: "grains", common_portion_name: "1 cup", common_portion_size_g: 158 },
+      { id: "banana", name: "Banana, raw", vitamin_k_mcg_per_100g: 0.5, category: "fruits", common_portion_name: "1 medium", common_portion_size_g: 118 },
     ];
   }
 
@@ -158,7 +164,7 @@ export default async function VitaminKCalculatorPage() {
         <Footer />
       </div>
 
-      {/* HowTo Schema for Calculator */}
+      {/* HowTo Schema */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -169,26 +175,11 @@ export default async function VitaminKCalculatorPage() {
             description:
               "Use our vitamin K calculator to determine the total vitamin K content in your meals for warfarin management",
             step: [
-              {
-                "@type": "HowToStep",
-                name: "Select foods",
-                text: "Choose foods from the common foods list or add custom foods",
-              },
-              {
-                "@type": "HowToStep",
-                name: "Adjust portions",
-                text: "Enter the portion size in grams for each food item",
-              },
-              {
-                "@type": "HowToStep",
-                name: "View total",
-                text: "The calculator automatically shows total vitamin K content",
-              },
+              { "@type": "HowToStep", name: "Select foods", text: "Choose foods from the common foods list or add custom foods" },
+              { "@type": "HowToStep", name: "Adjust portions", text: "Enter the portion size in grams for each food item" },
+              { "@type": "HowToStep", name: "View total", text: "The calculator automatically shows total vitamin K content" },
             ],
-            tool: {
-              "@type": "HowToTool",
-              name: "VitaK Tracker Vitamin K Calculator",
-            },
+            tool: { "@type": "HowToTool", name: "VitaK Tracker Vitamin K Calculator" },
           }),
         }}
       />
