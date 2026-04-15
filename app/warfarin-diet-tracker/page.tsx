@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Footer } from "@/components/ui/footer";
@@ -20,7 +21,9 @@ export const metadata: Metadata = {
   },
 };
 
-export default function WarfarinDietTrackerPage() {
+export default async function WarfarinDietTrackerPage() {
+  // Force dynamic rendering
+  await cookies();
   return (
     <>
       <BreadcrumbLD items={[
