@@ -114,6 +114,19 @@ const categories = [
   { name: "other", count: 887, description: "Miscellaneous items" },
 ];
 
+const discoveryEndpoints = [
+  { path: "/.well-known/api-catalog", label: "API Catalog", spec: "RFC 9727", type: "linkset+json", desc: "Machine-readable API catalog describing endpoints, OpenAPI spec, and documentation" },
+  { path: "/.well-known/openapi.json", label: "OpenAPI 3.1 Spec", spec: "OpenAPI 3.1", type: "application/openapi+json", desc: "Full OpenAPI specification for all x402 endpoints" },
+  { path: "/.well-known/agent-skills", label: "Agent Skills Index", spec: "Agent Skills RFC v0.2", type: "application/json", desc: "Discoverable skill definitions with input schemas for AI agents" },
+  { path: "/.well-known/mcp/server-card.json", label: "MCP Server Card", spec: "SEP-1649", type: "application/json", desc: "Model Context Protocol server card with tool definitions" },
+  { path: "/.well-known/x402", label: "x402 Discovery", spec: "x402", type: "application/json", desc: "Payment protocol discovery — wallet, pricing, and endpoint info" },
+  { path: "/.well-known/oauth-protected-resource", label: "OAuth Protected Resource", spec: "RFC 9728", type: "application/json", desc: "OAuth 2.0 protected resource metadata with authorization server info" },
+  { path: "/.well-known/openid-configuration", label: "OpenID Connect Discovery", spec: "OIDC Core", type: "application/json", desc: "OpenID Connect configuration with auth/token/JWKS endpoints" },
+  { path: "/.well-known/ai-plugin.json", label: "ChatGPT Plugin Manifest", spec: "OpenAI", type: "application/json", desc: "ChatGPT plugin manifest for GPT integration" },
+  { path: "/llms.txt", label: "LLMs.txt", spec: "llmstxt.org", type: "text/plain", desc: "Human- and LLM-friendly project description and API overview" },
+  { path: "/api-docs", label: "Documentation (this page)", spec: "HTML", type: "text/html", desc: "Human-readable API documentation you're reading now" },
+];
+
 export default function ApiDocsPage() {
   return (
     <>
@@ -135,49 +148,94 @@ export default function ApiDocsPage() {
           </p>
         </div>
 
-        {/* AI Agent Quick Start */}
+        {/* Agent Discovery */}
         <section className="mb-12 p-6 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border border-purple-100">
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">🤖 AI Agent Quick Start</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">🤖 Agent Discovery</h2>
           <p className="text-gray-600 mb-4">
-            LLMs and AI agents can discover this API through:
+            AI agents and LLMs can programmatically discover and authenticate with this API.
+            All endpoints support CORS and return JSON with <code className="text-xs bg-white px-1 rounded">Access-Control-Allow-Origin: *</code>.
           </p>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-            <div className="bg-white p-4 rounded-lg border">
-              <code className="text-purple-600 font-mono text-xs">GET /.well-known/api-catalog</code>
-              <p className="text-gray-500 mt-1">RFC 9727 API catalog (linkset+json)</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg border">
-              <code className="text-purple-600 font-mono text-xs">GET /.well-known/openapi.json</code>
-              <p className="text-gray-500 mt-1">OpenAPI 3.1 specification</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg border">
-              <code className="text-purple-600 font-mono text-xs">GET /.well-known/x402</code>
-              <p className="text-gray-500 mt-1">x402 endpoint discovery</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg border">
-              <code className="text-purple-600 font-mono text-xs">GET /.well-known/agent-skills</code>
-              <p className="text-gray-500 mt-1">Agent skills discovery index</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg border">
-              <code className="text-purple-600 font-mono text-xs">GET /.well-known/mcp/server-card.json</code>
-              <p className="text-gray-500 mt-1">MCP server card (SEP-1649)</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg border">
-              <code className="text-purple-600 font-mono text-xs">GET /.well-known/oauth-protected-resource</code>
-              <p className="text-gray-500 mt-1">OAuth 2.0 protected resource metadata</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg border">
-              <code className="text-purple-600 font-mono text-xs">GET /.well-known/ai-plugin.json</code>
-              <p className="text-gray-500 mt-1">ChatGPT plugin manifest</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg border">
-              <code className="text-purple-600 font-mono text-xs">GET /llms.txt</code>
-              <p className="text-gray-500 mt-1">LLMs.txt project description</p>
-            </div>
+          <p className="text-gray-500 text-sm mb-4">
+            The homepage also advertises all discovery endpoints via RFC 8288 <code className="text-xs bg-white px-1 rounded">Link</code> response headers, and supports <code className="text-xs bg-white px-1 rounded">Accept: text/markdown</code> content negotiation.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-purple-200">
+                  <th className="text-left py-2 px-2 text-purple-800">Endpoint</th>
+                  <th className="text-left py-2 px-2 text-purple-800">Spec</th>
+                  <th className="text-left py-2 px-2 text-purple-800">Purpose</th>
+                </tr>
+              </thead>
+              <tbody>
+                {discoveryEndpoints.map((ep) => (
+                  <tr key={ep.path} className="border-b border-purple-100 last:border-0 hover:bg-white/50">
+                    <td className="py-2 px-2">
+                      <a href={ep.path} target="_blank" rel="noopener noreferrer" className="text-purple-600 font-mono text-xs hover:underline">
+                        {ep.path}
+                      </a>
+                    </td>
+                    <td className="py-2 px-2">
+                      <span className="bg-purple-100 text-purple-700 text-xs px-1.5 py-0.5 rounded">{ep.spec}</span>
+                    </td>
+                    <td className="py-2 px-2 text-gray-600">{ep.desc}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
 
-        {/* Endpoints */}
+        {/* WebMCP */}
+        <section className="mb-12 p-6 bg-gradient-to-r from-green-50 to-teal-50 rounded-xl border border-green-200">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">🌐 WebMCP</h2>
+          <p className="text-gray-600 mb-3">
+            This site exposes tool definitions to AI agents via the browser using the WebMCP API
+            (<code className="text-xs bg-white px-1 rounded">navigator.modelContext.provideContext()</code>).
+            When you visit in a WebMCP-enabled browser, the following tools are registered:
+          </p>
+          <div className="grid sm:grid-cols-2 gap-3 text-sm">
+            <div className="bg-white p-3 rounded-lg border border-green-200">
+              <code className="text-green-700 font-mono text-xs">search_vitamin_k_foods</code>
+              <p className="text-gray-500 mt-1">Search foods by name or category</p>
+            </div>
+            <div className="bg-white p-3 rounded-lg border border-green-200">
+              <code className="text-green-700 font-mono text-xs">get_food_details</code>
+              <p className="text-gray-500 mt-1">Get food details with portion calculations</p>
+            </div>
+            <div className="bg-white p-3 rounded-lg border border-green-200">
+              <code className="text-green-700 font-mono text-xs">calculate_vitamin_k</code>
+              <p className="text-gray-500 mt-1">Calculate vitamin K for a portion</p>
+            </div>
+            <div className="bg-white p-3 rounded-lg border border-green-200">
+              <code className="text-green-700 font-mono text-xs">export_food_data</code>
+              <p className="text-gray-500 mt-1">Export food database as JSON</p>
+            </div>
+          </div>
+          <p className="text-gray-400 text-xs mt-3">
+            WebMCP is an emerging browser API. Tools are registered automatically when the browser supports it.
+          </p>
+        </section>
+
+        {/* Markdown for Agents */}
+        <section className="mb-12 p-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">📝 Markdown for Agents</h2>
+          <p className="text-gray-600 mb-3">
+            Request any page with <code className="text-xs bg-white px-1 rounded">Accept: text/markdown</code> to get a markdown representation:
+          </p>
+          <div className="bg-gray-900 text-green-400 p-4 rounded-lg text-xs font-mono overflow-x-auto">
+            <div className="text-gray-500"># Homepage</div>
+            curl -H &quot;Accept: text/markdown&quot; https://vitaktracker.com/<br />
+            <br />
+            <div className="text-gray-500"># API Docs</div>
+            curl -H &quot;Accept: text/markdown&quot; https://vitaktracker.com/api-docs
+          </div>
+          <p className="text-gray-500 text-sm mt-3">
+            Responses include <code className="text-xs bg-white px-1 rounded">Content-Type: text/markdown</code> and <code className="text-xs bg-white px-1 rounded">x-markdown-tokens</code> headers.
+          </p>
+        </section>
+
+        {/* API Endpoints */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">API Endpoints</h2>
           <div className="space-y-8">
@@ -274,6 +332,28 @@ export default function ApiDocsPage() {
           </div>
         </section>
 
+        {/* Authentication */}
+        <section className="mb-12 p-6 bg-blue-50 rounded-xl border border-blue-200">
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">🔐 Authentication</h2>
+          <p className="text-gray-600 mb-4">
+            Protected API endpoints (meal logging, credit tracking) use OAuth 2.0 via Clerk. AI agents can discover authentication details programmatically:
+          </p>
+          <div className="grid sm:grid-cols-2 gap-3 text-sm">
+            <div className="bg-white p-3 rounded-lg border border-blue-200">
+              <code className="text-blue-700 font-mono text-xs">GET /.well-known/openid-configuration</code>
+              <p className="text-gray-500 mt-1">OpenID Connect discovery — issuer, auth/token/JWKS endpoints</p>
+            </div>
+            <div className="bg-white p-3 rounded-lg border border-blue-200">
+              <code className="text-blue-700 font-mono text-xs">GET /.well-known/oauth-protected-resource</code>
+              <p className="text-gray-500 mt-1">RFC 9728 — which auth server issues tokens, supported scopes</p>
+            </div>
+          </div>
+          <p className="text-gray-500 text-xs mt-3">
+            Public food search and calculation endpoints are available without authentication via x402 payment.
+            Meal logging and credit tracking require Clerk OAuth authentication.
+          </p>
+        </section>
+
         {/* Data Provenance */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Data Provenance</h2>
@@ -319,16 +399,16 @@ export default function ApiDocsPage() {
           <Link href="/warfarin-diet-tracker" className="text-purple-600 hover:underline">
             Diet Tracker
           </Link>
-          <a href="/.well-known/api-catalog" className="text-purple-600 hover:underline" target="_blank">
+          <a href="/.well-known/api-catalog" className="text-purple-600 hover:underline" target="_blank" rel="noopener noreferrer">
             API Catalog
           </a>
-          <a href="/.well-known/openapi.json" className="text-purple-600 hover:underline" target="_blank">
+          <a href="/.well-known/openapi.json" className="text-purple-600 hover:underline" target="_blank" rel="noopener noreferrer">
             OpenAPI Spec
           </a>
-          <a href="/.well-known/x402" className="text-purple-600 hover:underline" target="_blank">
+          <a href="/.well-known/x402" className="text-purple-600 hover:underline" target="_blank" rel="noopener noreferrer">
             x402 Discovery
           </a>
-          <a href="/.well-known/agent-skills" className="text-purple-600 hover:underline" target="_blank">
+          <a href="/.well-known/agent-skills" className="text-purple-600 hover:underline" target="_blank" rel="noopener noreferrer">
             Agent Skills
           </a>
         </div>
