@@ -30,9 +30,8 @@ const nextConfig = {
     dirs: ['app', 'components', 'lib'],
   },
 
-  // Security headers + Link headers for agent discovery
+  // Security headers
   async headers() {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vitaktracker.com';
     return [
       {
         source: '/api/:path*',
@@ -48,24 +47,6 @@ const nextConfig = {
           {
             key: 'X-XSS-Protection',
             value: '1; mode=block',
-          },
-        ],
-      },
-      {
-        source: '/',
-        headers: [
-          {
-            key: 'Link',
-            value: [
-              `<${baseUrl}/.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"`,
-              `<${baseUrl}/.well-known/openapi.json>; rel="service-desc"; type="application/openapi+json"`,
-              `<${baseUrl}/api-docs>; rel="service-doc"; type="text/html"`,
-              `<${baseUrl}/llms.txt>; rel="llms-txt"; type="text/plain"`,
-              `<${baseUrl}/.well-known/ai-plugin.json>; rel="ai-plugin"; type="application/json"`,
-              `<${baseUrl}/.well-known/agent-skills>; rel="agent-skills"; type="application/json"`,
-              `<${baseUrl}/.well-known/mcp/server-card.json>; rel="mcp-server"; type="application/json"`,
-              `<${baseUrl}/.well-known/oauth-protected-resource>; rel="oauth-protected-resource"; type="application/json"`,
-            ].join(', '),
           },
         ],
       },
