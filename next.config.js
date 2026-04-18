@@ -72,6 +72,10 @@ const nextConfig = {
         source: '/.well-known/mcp/server-card.json',
         destination: '/.well-known/mcp/server-card',
       },
+      {
+        source: '/.well-known/openid-configuration',
+        destination: '/.well-known/openid-configuration',
+      },
     ];
   },
 };

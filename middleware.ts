@@ -172,6 +172,7 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
         `<${baseUrl}/.well-known/agent-skills>; rel="agent-skills"; type="application/json"; title="Agent Skills Discovery Index"`,
         `<${baseUrl}/.well-known/mcp/server-card.json>; rel="mcp-server"; type="application/json"; title="MCP Server Card"`,
         `<${baseUrl}/.well-known/oauth-protected-resource>; rel="oauth-protected-resource"; type="application/json"; title="OAuth Protected Resource Metadata"`,
+        `<${baseUrl}/.well-known/openid-configuration>; rel="openid-configuration"; type="application/json"; title="OpenID Connect Discovery"`,
       ].join(", ")
     );
   }

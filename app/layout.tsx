@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
+import { WebMcpProvider } from "@/components/webmcp-provider";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { TRPCProvider } from "@/lib/trpc/provider";
@@ -95,6 +96,7 @@ export default function RootLayout({
         <body className={`${inter.variable} font-sans antialiased`}>
           <TRPCProvider>
             {children}
+            <WebMcpProvider />
             <Toaster />
           </TRPCProvider>
           {/* Analytics removed for Cloudflare deployment */}
