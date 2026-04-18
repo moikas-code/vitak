@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import Script from "next/script";
 
 /**
  * WebMCP Provider — registers VitaK Tracker tools via navigator.modelContext
  *
- * Uses two strategies:
- * 1. Inline <script> in <head> fires immediately on page load (for scanners)
- * 2. useEffect re-registration after hydration (for browsers supporting the API)
+ * Injects an inline script into <head> that calls navigator.modelContext.provideContext()
+ * with 4 tool definitions. The registration is unconditional — if the API isn't
+ * available, the call is silently skipped.
  *
  * @see https://webmachinelearning.github.io/webmcp/
  * @see https://developer.chrome.com/blog/webmcp-epp
@@ -88,114 +88,34 @@ const WEBMCP_SCRIPT = `
     }
   ];
 
-  function registerWebMCP() {
-    if (navigator.modelContext && navigator.modelContext.provideContext) {
-      navigator.modelContext.provideContext({ tools: TOOLS }).then(function() {
-        console.info("[WebMCP] Tools registered successfully");
-      }).catch(function(err) {
-        console.warn("[WebMCP] Failed to register tools:", err);
-      });
+  function register() {
+    try {
+      if (navigator.modelContext && typeof navigator.modelContext.provideContext === 'function') {
+        navigator.modelContext.provideContext({ tools: TOOLS }).then(function() {
+          console.info("[WebMCP] Tools registered successfully");
+        }).catch(function(err) {
+          console.warn("[WebMCP] Registration failed:", err);
+        });
+      }
+    } catch(e) {
+      // navigator.modelContext not available — skip silently
     }
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", registerWebMCP);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', register);
   } else {
-    registerWebMCP();
+    register();
   }
 })();
 `;
 
 export function WebMcpProvider() {
-  // Re-register after hydration for browsers that have the API
-  useEffect(() => {
-    if (typeof navigator !== "undefined" && navigator.modelContext?.provideContext) {
-      const tools = [
-        {
-          name: "search_vitamin_k_foods",
-          description: "Search the vitamin K food database by name or category.",
-          inputSchema: {
-            type: "object",
-            properties: {
-              query: { type: "string", description: "Food name to search for" },
-              category: { type: "string", description: "Filter by category" },
-              limit: { type: "integer", description: "Max results (1-50)" },
-            },
-            required: ["query"],
-          },
-          execute: async (args: Record<string, unknown>) => {
-            const params = new URLSearchParams();
-            params.set("query", String(args.query || ""));
-            if (args.category) params.set("category", String(args.category));
-            if (args.limit) params.set("limit", String(args.limit));
-            const res = await fetch(`${window.location.origin}/api/x402/food/search?${params}`);
-            return res.json();
-          },
-        },
-        {
-          name: "get_food_details",
-          description: "Get detailed food information by ID.",
-          inputSchema: {
-            type: "object",
-            properties: { id: { type: "string", description: "Food ID" } },
-            required: ["id"],
-          },
-          execute: async (args: Record<string, unknown>) => {
-            const res = await fetch(`${window.location.origin}/api/x402/food/${args.id}`);
-            return res.json();
-          },
-        },
-        {
-          name: "calculate_vitamin_k",
-          description: "Calculate vitamin K for a food portion.",
-          inputSchema: {
-            type: "object",
-            properties: {
-              food_id: { type: "string", description: "Food ID" },
-              portion_size_g: { type: "number", description: "Portion in grams" },
-            },
-            required: ["food_id", "portion_size_g"],
-          },
-          execute: async (args: Record<string, unknown>) => {
-            const res = await fetch(`${window.location.origin}/api/x402/calculate`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ food_id: args.food_id, portion_size_g: args.portion_size_g }),
-            });
-            return res.json();
-          },
-        },
-        {
-          name: "export_food_data",
-          description: "Export the food database as JSON.",
-          inputSchema: {
-            type: "object",
-            properties: {
-              category: { type: "string", description: "Filter by category" },
-              source: { type: "string", description: "Filter by data source" },
-            },
-          },
-          execute: async (args: Record<string, unknown>) => {
-            const params = new URLSearchParams();
-            if (args.category) params.set("category", String(args.category));
-            if (args.source) params.set("source", String(args.source));
-            const res = await fetch(`${window.location.origin}/api/x402/food/export?${params}`);
-            return res.json();
-          },
-        },
-      ];
-
-      navigator.modelContext
-        .provideContext({ tools })
-        .then(() => console.info("[WebMCP] Re-registered after hydration"))
-        .catch((err: unknown) => console.warn("[WebMCP] Re-registration failed:", err));
-    }
-  }, []);
-
   return (
-    <script
-      dangerouslySetInnerHTML={{ __html: WEBMCP_SCRIPT }}
+    <Script
       id="webmcp-tools"
+      strategy="beforeInteractive"
+      dangerouslySetInnerHTML={{ __html: WEBMCP_SCRIPT }}
     />
   );
 }
