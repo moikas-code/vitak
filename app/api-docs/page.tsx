@@ -141,18 +141,34 @@ export default function ApiDocsPage() {
           <p className="text-gray-600 mb-4">
             LLMs and AI agents can discover this API through:
           </p>
-          <div className="grid sm:grid-cols-2 gap-3 text-sm">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
             <div className="bg-white p-4 rounded-lg border">
-              <code className="text-purple-600 font-mono text-xs">GET /.well-known/ai-plugin.json</code>
-              <p className="text-gray-500 mt-1">ChatGPT plugin manifest</p>
+              <code className="text-purple-600 font-mono text-xs">GET /.well-known/api-catalog</code>
+              <p className="text-gray-500 mt-1">RFC 9727 API catalog (linkset+json)</p>
             </div>
             <div className="bg-white p-4 rounded-lg border">
               <code className="text-purple-600 font-mono text-xs">GET /.well-known/openapi.json</code>
-              <p className="text-gray-500 mt-1">OpenAPI 3.1 spec</p>
+              <p className="text-gray-500 mt-1">OpenAPI 3.1 specification</p>
             </div>
             <div className="bg-white p-4 rounded-lg border">
               <code className="text-purple-600 font-mono text-xs">GET /.well-known/x402</code>
               <p className="text-gray-500 mt-1">x402 endpoint discovery</p>
+            </div>
+            <div className="bg-white p-4 rounded-lg border">
+              <code className="text-purple-600 font-mono text-xs">GET /.well-known/agent-skills</code>
+              <p className="text-gray-500 mt-1">Agent skills discovery index</p>
+            </div>
+            <div className="bg-white p-4 rounded-lg border">
+              <code className="text-purple-600 font-mono text-xs">GET /.well-known/mcp/server-card.json</code>
+              <p className="text-gray-500 mt-1">MCP server card (SEP-1649)</p>
+            </div>
+            <div className="bg-white p-4 rounded-lg border">
+              <code className="text-purple-600 font-mono text-xs">GET /.well-known/oauth-protected-resource</code>
+              <p className="text-gray-500 mt-1">OAuth 2.0 protected resource metadata</p>
+            </div>
+            <div className="bg-white p-4 rounded-lg border">
+              <code className="text-purple-600 font-mono text-xs">GET /.well-known/ai-plugin.json</code>
+              <p className="text-gray-500 mt-1">ChatGPT plugin manifest</p>
             </div>
             <div className="bg-white p-4 rounded-lg border">
               <code className="text-purple-600 font-mono text-xs">GET /llms.txt</code>
@@ -303,11 +319,17 @@ export default function ApiDocsPage() {
           <Link href="/warfarin-diet-tracker" className="text-purple-600 hover:underline">
             Diet Tracker
           </Link>
+          <a href="/.well-known/api-catalog" className="text-purple-600 hover:underline" target="_blank">
+            API Catalog
+          </a>
           <a href="/.well-known/openapi.json" className="text-purple-600 hover:underline" target="_blank">
             OpenAPI Spec
           </a>
           <a href="/.well-known/x402" className="text-purple-600 hover:underline" target="_blank">
             x402 Discovery
+          </a>
+          <a href="/.well-known/agent-skills" className="text-purple-600 hover:underline" target="_blank">
+            Agent Skills
           </a>
         </div>
       </main>

@@ -1,5 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { userSettings } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -24,6 +24,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/stripe(.*)",
   "/api/auth/sync-user",
   "/api/clerk/webhook",
+  "/api/markdown",
   "/privacy",
   "/terms",
   "/vitamin-k-foods-warfarin",
@@ -79,7 +80,20 @@ function addSecurityHeaders(response: NextResponse) {
   return response;
 }
 
-export default clerkMiddleware(async (auth, req) => {
+export default clerkMiddleware(async (auth, req: NextRequest) => {
+  // ── Markdown content negotiation for AI agents ──────────────────────
+  // When Accept: text/markdown is requested, rewrite to the markdown API route
+  const acceptHeader = req.headers.get("accept") || "";
+  if (acceptHeader.includes("text/markdown")) {
+    const path = req.nextUrl.pathname;
+    const mdRoutes = ["/", "/api-docs"];
+    if (mdRoutes.includes(path)) {
+      const mdUrl = new URL("/api/markdown", req.url);
+      mdUrl.searchParams.set("path", path);
+      return NextResponse.rewrite(mdUrl);
+    }
+  }
+
   // Handle CORS for x402 API endpoints
   if (req.nextUrl.pathname.startsWith("/api/x402/")) {
     if (req.method === "OPTIONS") {
@@ -103,6 +117,7 @@ export default clerkMiddleware(async (auth, req) => {
     response.headers.set("Access-Control-Allow-Headers", "Content-Type");
     return response;
   }
+
   // Force HTTPS in production
   if (process.env.NODE_ENV === "production" && req.headers.get("x-forwarded-proto") === "http") {
     const httpsUrl = new URL(req.url);
@@ -139,9 +154,29 @@ export default clerkMiddleware(async (auth, req) => {
     }
   }
 
-  // Apply security headers to all responses
+  // ── Apply security headers + Link headers ─────────────────────────────
   const response = NextResponse.next();
-  return addSecurityHeaders(response);
+  addSecurityHeaders(response);
+
+  // RFC 8288 Link headers for agent discovery on homepage
+  if (req.nextUrl.pathname === "/") {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://vitaktracker.com";
+    response.headers.set(
+      "Link",
+      [
+        `<${baseUrl}/.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"; title="VitaK Tracker API Catalog"`,
+        `<${baseUrl}/.well-known/openapi.json>; rel="service-desc"; type="application/openapi+json"; title="OpenAPI 3.1 Specification"`,
+        `<${baseUrl}/api-docs>; rel="service-doc"; type="text/html"; title="API Documentation"`,
+        `<${baseUrl}/llms.txt>; rel="llms-txt"; type="text/plain"; title="VitaK Tracker LLMs.txt"`,
+        `<${baseUrl}/.well-known/ai-plugin.json>; rel="ai-plugin"; type="application/json"; title="ChatGPT Plugin Manifest"`,
+        `<${baseUrl}/.well-known/agent-skills>; rel="agent-skills"; type="application/json"; title="Agent Skills Discovery Index"`,
+        `<${baseUrl}/.well-known/mcp/server-card.json>; rel="mcp-server"; type="application/json"; title="MCP Server Card"`,
+        `<${baseUrl}/.well-known/oauth-protected-resource>; rel="oauth-protected-resource"; type="application/json"; title="OAuth Protected Resource Metadata"`,
+      ].join(", ")
+    );
+  }
+
+  return response;
 });
 
 export const config = {

@@ -26,10 +26,16 @@ VitaK offers paid APIs via HTTP 402 protocol (x402) for programmatic access to v
 
 ### Discovery Endpoints
 
-- `GET /.well-known/ai-plugin.json` — ChatGPT plugin manifest
+- `GET /.well-known/api-catalog` — RFC 9727 API catalog (linkset+json)
+- `GET /.well-known/agent-skills` — Agent skills discovery index
+- `GET /.well-known/mcp/server-card.json` — MCP server card (SEP-1649)
+- `GET /.well-known/oauth-protected-resource` — OAuth 2.0 protected resource metadata (RFC 9728)
 - `GET /.well-known/openapi.json` — OpenAPI 3.1 specification
 - `GET /.well-known/x402` — x402 payment discovery (wallet, pricing, endpoints)
+- `GET /.well-known/ai-plugin.json` — ChatGPT plugin manifest
 - `GET /api-docs` — Human-readable API documentation
+- Homepage `Link` headers advertise all discovery endpoints per RFC 8288
+- `Accept: text/markdown` content negotiation returns markdown for homepage and `/api-docs`
 
 ### 1. Food Search API
 ```
