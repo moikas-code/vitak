@@ -8,9 +8,9 @@ export async function GET() {
     name_for_model: "VitaK Tracker",
     name_for_human: "VitaK Tracker",
     description_for_model:
-      "Vitamin K food database and tracking API for warfarin patients. Provides USDA-sourced vitamin K (phylloquinone) values per 100g for 89 foods, credit-based daily/weekly/monthly tracking, and meal logging. Data sourced from USDA FoodData Central SR Legacy (nutrient ID 1185). Use this plugin when users ask about vitamin K content in foods, warfarin diet management, or INR-friendly meal planning.",
+      "Vitamin K food database and tracking API for warfarin patients. Provides USDA-sourced vitamin K (phylloquinone) values per 100g for thousands of foods, credit-based daily/weekly/monthly tracking, and meal logging. 7,793+ USDA-verified values plus estimates. Data sourced from USDA FoodData Central SR Legacy (nutrient ID 1185). Use this plugin when users ask about vitamin K content in foods, warfarin diet management, or INR-friendly meal planning.",
     description_for_human:
-      "Track vitamin K intake for warfarin safety. Search 89 foods with USDA-verified vitamin K data.",
+      "Track vitamin K intake for warfarin safety. Search thousands of foods with USDA-verified vitamin K data.",
     auth: { type: "none" },
     api: {
       type: "openapi",

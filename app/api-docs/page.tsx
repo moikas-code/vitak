@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     "Programmatic access to the VitaK Tracker vitamin K food database. USDA-verified nutritional data for warfarin patients via REST API with x402 payment protocol.",
   openGraph: {
     title: "VitaK Tracker API — Vitamin K Food Data",
-    description: "Access vitamin K data for 89 foods via REST API. USDA-verified values, portion calculations, and export capabilities.",
+    description: "Access vitamin K data for thousands of foods via REST API. 7,793+ USDA-verified values, portion calculations, and export capabilities.",
     type: "website",
   },
 };
@@ -92,8 +92,8 @@ const endpoints = [
     ],
     response: `{
   "export_date": "2026-04-14T00:00:00Z",
-  "total_foods": 89,
-  "usda_verified_count": 38,
+  "total_foods": 7844,
+  "usda_verified_count": 7793,
   "estimate_count": 51,
   "foods": [...]
 }`,
@@ -140,7 +140,7 @@ export default function ApiDocsPage() {
             Vitamin K Food Data API
           </h1>
           <p className="text-lg text-gray-600 mb-2">
-            Programmatic access to our vitamin K food database. 89 foods, 38 USDA-verified, available via REST API.
+            Programmatic access to our vitamin K food database. 7,793+ USDA-verified foods across 11 categories, available via REST API.
           </p>
           <p className="text-sm text-gray-500">
             Powered by x402 payment protocol · USDC on Base ·{" "}
@@ -368,7 +368,7 @@ export default function ApiDocsPage() {
             <div className="border rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
                 <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-bold">✓ USDA Verified</span>
-                <span className="text-lg font-bold">38 foods</span>
+                <span className="text-lg font-bold">7,793 foods</span>
               </div>
               <p className="text-sm text-gray-600">
                 Values verified against USDA FoodData Central SR Legacy data (nutrient ID 1185, phylloquinone).

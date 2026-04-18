@@ -8,7 +8,7 @@ export async function GET() {
     info: {
       title: "VitaK Tracker API",
       description:
-        "Vitamin K food data API for warfarin patients. Provides USDA-sourced vitamin K (phylloquinone) values per 100g for 89 foods, credit-based tracking, and meal logging. Data sourced from USDA FoodData Central SR Legacy data.",
+        "Vitamin K food data API for warfarin patients. Provides USDA-sourced vitamin K (phylloquinone) values per 100g for thousands of foods, credit-based tracking, and meal logging. 7,793+ USDA-verified values plus estimates. Data sourced from USDA FoodData Central SR Legacy data.",
       version: "1.0.0",
       contact: {
         name: "VitaK Tracker",

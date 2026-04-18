@@ -13,7 +13,7 @@ export async function GET() {
     serverInfo: {
       name: "VitaK Tracker",
       version: "1.0.0",
-      description: "Vitamin K food database and tracking API for warfarin patients. USDA-verified vitamin K values per 100g, credit-based tracking, and meal logging.",
+      description: "Vitamin K food database and tracking API for warfarin patients. 7,793+ USDA-verified vitamin K values per 100g, credit-based tracking, and meal logging.",
     },
     transport: {
       type: "http",

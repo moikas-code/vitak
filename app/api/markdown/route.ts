@@ -22,7 +22,8 @@ A Progressive Web App that helps warfarin (Coumadin) patients manage their vitam
 **Key features:**
 
 - **Credit System** — Daily, weekly, and monthly Vitamin K budgets
-- **89 Foods Database** — 38 USDA FoodData Central verified, 51 estimates
+- **7,793+ USDA-Verified Foods** — Values sourced from USDA FoodData Central SR Legacy data (nutrient ID 1185, phylloquinone)
+- **51 Estimated Foods** — Prepared and restaurant items marked with data_source: "estimate"
 - **Per-100g Values** — All values standardized to mcg per 100g
 - **Visual Charts** — Daily intake history, category breakdowns, progress indicators
 - **Meal Presets** — Save frequent meals for quick logging
@@ -71,7 +72,7 @@ This tool is for informational purposes only. Warfarin dosing is medically sensi
 
 ## Data Provenance
 
-- **USDA Verified (38 foods):** Values verified against USDA FoodData Central SR Legacy data (nutrient ID 1185, phylloquinone). Each food includes an FDC ID for source verification.
+- **USDA Verified (7,793 foods):** Values verified against USDA FoodData Central SR Legacy data (nutrient ID 1185, phylloquinone). Each food includes an FDC ID for source verification.
 - **Estimates (51 foods):** Approximate values for prepared foods, restaurant items, and foods with natural variation. Marked with \`data_source: "estimate"\` in the API.
 `;
 
