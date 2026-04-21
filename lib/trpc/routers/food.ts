@@ -2,11 +2,25 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 import { food_category_schema } from "@/lib/types";
 import { getDb } from "@/lib/db";
-import { foods } from "@/lib/db/schema";
+import { foods, foodAuditLog } from "@/lib/db/schema";
 import { eq, like, or, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { checkRateLimit, RateLimitError, RATE_LIMITS } from "@/lib/security/rate-limit";
 import { mapFood } from "@/lib/db/mappers";
+
+const food_category_enum = z.enum([
+  "vegetables",
+  "fruits",
+  "proteins",
+  "grains",
+  "dairy",
+  "fats_oils",
+  "beverages",
+  "nuts_seeds",
+  "herbs_spices",
+  "prepared_foods",
+  "other",
+]);
 
 export const foodRouter = createTRPCRouter({
   search: protectedProcedure
@@ -101,4 +115,63 @@ export const foodRouter = createTRPCRouter({
 
     return results.map(mapFood);
   }),
+
+  create_custom: protectedProcedure
+    .input(
+      z.object({
+        name: z.string().min(1).max(255),
+        vitamin_k_mcg_per_100g: z.number().min(0),
+        category: food_category_enum,
+        common_portion_size_g: z.number().min(0),
+        common_portion_name: z.string().min(1).max(100),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        await checkRateLimit(ctx.session.userId, "food_search", RATE_LIMITS.FOOD_SEARCH);
+      } catch (error) {
+        if (error instanceof RateLimitError) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: "Rate limit exceeded. Please try again later.",
+          });
+        }
+        throw error;
+      }
+
+      const db = await getDb();
+
+      const [food] = await db
+        .insert(foods)
+        .values({
+          name: input.name,
+          vitaminKMcgPer100g: input.vitamin_k_mcg_per_100g,
+          category: input.category,
+          commonPortionSizeG: input.common_portion_size_g,
+          commonPortionName: input.common_portion_name,
+          dataSource: "user_submitted",
+          createdBy: ctx.session.userId,
+          updatedBy: ctx.session.userId,
+        })
+        .returning();
+
+      if (!food) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create custom food",
+        });
+      }
+
+      await db.insert(foodAuditLog).values({
+        action: "create",
+        foodId: food.id,
+        changedAt: new Date().toISOString(),
+        changedBy: ctx.session.userId,
+        newValues: JSON.stringify(input),
+        ipAddress: ctx.headers.get("x-forwarded-for") || ctx.headers.get("x-real-ip") || null,
+        userAgent: ctx.headers.get("user-agent") || null,
+      });
+
+      return mapFood(food);
+    }),
 });
